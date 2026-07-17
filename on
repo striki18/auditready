@@ -1,0 +1,13 @@
+warning: in the working copy of 'package.json', LF will be replaced by CRLF the next time Git touches it
+[1mdiff --git a/package.json b/package.json[m
+[1mindex 3624cf2..a92b082 100644[m
+[1m--- a/package.json[m
+[1m+++ b/package.json[m
+[36m@@ -9,6 +9,7 @@[m
+     "lint": "eslint"[m
+   },[m
+   "dependencies": {[m
+[32m+[m[32m    "@supabase/supabase-js": "^2.110.0",[m
+     "next": "16.2.9",[m
+     "react": "19.2.4",[m
+     "react-dom": "19.2.4"[m
