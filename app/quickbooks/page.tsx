@@ -12,9 +12,15 @@ export default function QuickbooksPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   // Evidence catalog state
+  // Evidence catalog state (kept for backward compatibility, but not used now)
   const [evidence, setEvidence] = useState<any[]>([]);
   const [evidenceLoading, setEvidenceLoading] = useState(true);
   const [evidenceError, setEvidenceError] = useState<string | null>(null);
+
+  // Evidence plan state
+  const [plan, setPlan] = useState<any[]>([]);
+  const [planLoading, setPlanLoading] = useState(true);
+  const [planError, setPlanError] = useState<string | null>(null);
 
   // Form state
   const [auditType, setAuditType] = useState('Year-end Audit');
@@ -44,9 +50,30 @@ export default function QuickbooksPage() {
         setAuditType(first.audit_type);
         setStartDate(first.start_date);
         setEndDate(first.end_date);
+        // Load evidence plan for the current engagement
+        await fetchEvidencePlan(first.id);
       }
     } catch (e: any) {
       console.error(e);
+    }
+  };
+
+  // Fetch evidence plan for a given engagement ID
+  const fetchEvidencePlan = async (engagementId: string) => {
+    try {
+      const res = await fetch(`/api/evidence/plan?engagement_id=${engagementId}`);
+      if (!res.ok) {
+        // If the API returns 400 (missing ID) or 200 with empty array, treat as empty
+        setPlan([]);
+        setPlanError(null);
+        return;
+      }
+      const data = await res.json();
+      setPlan(data);
+    } catch (e: any) {
+      setPlanError(e.message);
+    } finally {
+      setPlanLoading(false);
     }
   };
 
@@ -143,20 +170,20 @@ export default function QuickbooksPage() {
           <p><strong>Status:</strong> {current.status}</p>
         </div>
       )}
-      {/* Evidence Catalog Section */}
+      {/* Evidence Plan Section */}
       <div style={{ marginTop: '2rem' }}>
-        <h2>Evidence Catalog</h2>
-        {evidenceLoading && <p>Loading evidence catalog...</p>}
-        {evidenceError && <p style={{ color: 'red' }}>Failed to load evidence catalog.</p>}
-        {!evidenceLoading && !evidenceError && evidence.length === 0 && (
-          <p>No evidence catalog available.</p>
+        <h2>Evidence Plan</h2>
+        {planLoading && <p>Loading evidence plan...</p>}
+        {planError && <p style={{ color: 'red' }}>Failed to load evidence plan.</p>}
+        {!planLoading && !planError && plan.length === 0 && (
+          <p>No evidence plan available.</p>
         )}
-        {!evidenceLoading && !evidenceError && evidence.length > 0 && (
+        {!planLoading && !planError && plan.length > 0 && (
           <>
             {/* Financial Records */}
             <section>
               <h3>Financial Records</h3>
-              {evidence
+              {plan
                 .filter(item => item.category === 'Financial Records')
                 .sort((a, b) => a.display_order - b.display_order)
                 .map(item => (
@@ -164,14 +191,15 @@ export default function QuickbooksPage() {
                     <p>{item.auto_collectable ? '✓' : '○'} {item.evidence_name}</p>
                     <p>Owner: {item.owner_type}</p>
                     <p>Description: {item.description || '(No description)'}</p>
-                    <p>Type: {item.auto_collectable ? 'Auto Collect' : 'Manual'}</p>
+                    <p>Collection: {item.auto_collectable ? 'Auto Collect' : 'Manual'}</p>
+                    <p>Status: {item.status}</p>
                   </div>
                 ))}
             </section>
             {/* External Documents */}
             <section style={{ marginTop: '1rem' }}>
               <h3>External Documents</h3>
-              {evidence
+              {plan
                 .filter(item => item.category === 'External Documents')
                 .sort((a, b) => a.display_order - b.display_order)
                 .map(item => (
@@ -179,7 +207,8 @@ export default function QuickbooksPage() {
                     <p>{item.auto_collectable ? '✓' : '○'} {item.evidence_name}</p>
                     <p>Owner: {item.owner_type}</p>
                     <p>Description: {item.description || '(No description)'}</p>
-                    <p>Type: {item.auto_collectable ? 'Auto Collect' : 'Manual'}</p>
+                    <p>Collection: {item.auto_collectable ? 'Auto Collect' : 'Manual'}</p>
+                    <p>Status: {item.status}</p>
                   </div>
                 ))}
             </section>
