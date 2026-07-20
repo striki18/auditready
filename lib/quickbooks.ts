@@ -41,6 +41,7 @@ async function storeToken(tokenData: any, realmId?: string) {
     : new Date(Date.now() + Number(tokenData.expires_in) * 1000).toISOString();
 
   if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    // Use upsert with conflict on realm_id to avoid duplicate rows.
     const { error } = await supabase.from('quickbooks_tokens').upsert([
       {
         realm_id: finalRealmId,
@@ -48,7 +49,7 @@ async function storeToken(tokenData: any, realmId?: string) {
         refresh_token: tokenData.refresh_token,
         expires_at: expiresAt,
       },
-    ]);
+    ], { onConflict: 'realm_id' });
     if (error) throw error;
     return;
   }

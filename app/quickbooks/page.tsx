@@ -8,8 +8,14 @@ import { useEffect, useState } from 'react';
  */
 export default function QuickbooksPage() {
   const [company, setCompany] = useState<any>(null);
+  const [engagements, setEngagements] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Form state
+  const [auditType, setAuditType] = useState('Year-end Audit');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
 
   const fetchCompanyInfo = async () => {
     try {
@@ -19,33 +25,104 @@ export default function QuickbooksPage() {
       setCompany(data);
     } catch (e: any) {
       setError(e.message);
-    } finally {
-      setLoading(false);
+    }
+  };
+
+  const fetchEngagements = async () => {
+    try {
+      const res = await fetch('/api/engagements');
+      if (!res.ok) throw new Error('Failed to load engagements');
+      const data = await res.json();
+      setEngagements(data);
+      // Prepopulate form if an engagement exists
+      if (Array.isArray(data) && data.length > 0) {
+        const first = data[0];
+        setAuditType(first.audit_type);
+        setStartDate(first.start_date);
+        setEndDate(first.end_date);
+      }
+    } catch (e: any) {
+      console.error(e);
     }
   };
 
   useEffect(() => {
-    fetchCompanyInfo();
+    const init = async () => {
+      await fetchCompanyInfo();
+      await fetchEngagements();
+      setLoading(false);
+    };
+    init();
   }, []);
 
   const handleConnect = () => {
-    // Redirect to the OAuth initiation endpoint.
     window.location.href = '/api/auth/intuit';
+  };
+
+  const handleCreate = async () => {
+    if (!company) return;
+    try {
+      const payload = {
+        realm_id: company?.realm_id || '',
+        // Use the actual QuickBooks company name as source of truth
+        company_name: company?.CompanyInfo?.CompanyName || 'Unknown',
+        audit_type: auditType,
+        start_date: startDate,
+        end_date: endDate,
+      };
+      const res = await fetch('/api/engagements', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) throw new Error('Create failed');
+      await fetchEngagements();
+    } catch (e: any) {
+      console.error(e);
+    }
   };
 
   if (loading) return <p>Loading...</p>;
 
+  const current = engagements[0];
+
   return (
     <div style={{ padding: '2rem' }}>
-      <h1>QuickBooks Integration</h1>
+      <h1>Audit Engagement</h1>
       {error && <p style={{ color: 'red' }}>{error}</p>}
       {company ? (
         <div>
           <h2>Connected Company</h2>
-          <pre>{JSON.stringify(company, null, 2)}</pre>
+          <p>{company?.CompanyInfo?.CompanyName || 'Unnamed'}</p>
         </div>
       ) : (
         <button onClick={handleConnect}>Connect QuickBooks</button>
+      )}
+      {company && (
+        <div style={{ marginTop: '1rem' }}>
+          <h3>Audit Type</h3>
+          <select value={auditType} onChange={e => setAuditType(e.target.value)}>
+            <option>Year-end Audit</option>
+            <option>Interim Review</option>
+            <option>Due Diligence</option>
+            <option>Tax Support</option>
+          </select>
+          <h3>Audit Period</h3>
+          <label>Start Date: <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} /></label>
+          <br />
+          <label>End Date: <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} /></label>
+          <br />
+          <button onClick={handleCreate} style={{ marginTop: '0.5rem' }}>Create Engagement</button>
+        </div>
+      )}
+      {current && (
+        <div style={{ marginTop: '2rem' }}>
+          <h2>Current Engagement</h2>
+          <p><strong>Company:</strong> {current.company_name}</p>
+          <p><strong>Audit Type:</strong> {current.audit_type}</p>
+          <p><strong>Period:</strong> {current.start_date} to {current.end_date}</p>
+          <p><strong>Status:</strong> {current.status}</p>
+        </div>
       )}
     </div>
   );
