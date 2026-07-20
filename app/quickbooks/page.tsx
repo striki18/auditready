@@ -11,6 +11,10 @@ export default function QuickbooksPage() {
   const [engagements, setEngagements] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // Evidence catalog state
+  const [evidence, setEvidence] = useState<any[]>([]);
+  const [evidenceLoading, setEvidenceLoading] = useState(true);
+  const [evidenceError, setEvidenceError] = useState<string | null>(null);
 
   // Form state
   const [auditType, setAuditType] = useState('Year-end Audit');
@@ -46,10 +50,25 @@ export default function QuickbooksPage() {
     }
   };
 
+  // Fetch evidence catalog from the new API
+  const fetchEvidenceCatalog = async () => {
+    try {
+      const res = await fetch('/api/evidence/catalog');
+      if (!res.ok) throw new Error('Failed to load evidence catalog');
+      const data = await res.json();
+      setEvidence(data);
+    } catch (e: any) {
+      setEvidenceError(e.message);
+    } finally {
+      setEvidenceLoading(false);
+    }
+  };
+
   useEffect(() => {
     const init = async () => {
       await fetchCompanyInfo();
       await fetchEngagements();
+    await fetchEvidenceCatalog();
       setLoading(false);
     };
     init();
@@ -124,6 +143,49 @@ export default function QuickbooksPage() {
           <p><strong>Status:</strong> {current.status}</p>
         </div>
       )}
+      {/* Evidence Catalog Section */}
+      <div style={{ marginTop: '2rem' }}>
+        <h2>Evidence Catalog</h2>
+        {evidenceLoading && <p>Loading evidence catalog...</p>}
+        {evidenceError && <p style={{ color: 'red' }}>Failed to load evidence catalog.</p>}
+        {!evidenceLoading && !evidenceError && evidence.length === 0 && (
+          <p>No evidence catalog available.</p>
+        )}
+        {!evidenceLoading && !evidenceError && evidence.length > 0 && (
+          <>
+            {/* Financial Records */}
+            <section>
+              <h3>Financial Records</h3>
+              {evidence
+                .filter(item => item.category === 'Financial Records')
+                .sort((a, b) => a.display_order - b.display_order)
+                .map(item => (
+                  <div key={item.id} style={{ borderBottom: '1px solid #ddd', padding: '0.5rem 0' }}>
+                    <p>{item.auto_collectable ? '✓' : '○'} {item.evidence_name}</p>
+                    <p>Owner: {item.owner_type}</p>
+                    <p>Description: {item.description || '(No description)'}</p>
+                    <p>Type: {item.auto_collectable ? 'Auto Collect' : 'Manual'}</p>
+                  </div>
+                ))}
+            </section>
+            {/* External Documents */}
+            <section style={{ marginTop: '1rem' }}>
+              <h3>External Documents</h3>
+              {evidence
+                .filter(item => item.category === 'External Documents')
+                .sort((a, b) => a.display_order - b.display_order)
+                .map(item => (
+                  <div key={item.id} style={{ borderBottom: '1px solid #ddd', padding: '0.5rem 0' }}>
+                    <p>{item.auto_collectable ? '✓' : '○'} {item.evidence_name}</p>
+                    <p>Owner: {item.owner_type}</p>
+                    <p>Description: {item.description || '(No description)'}</p>
+                    <p>Type: {item.auto_collectable ? 'Auto Collect' : 'Manual'}</p>
+                  </div>
+                ))}
+            </section>
+          </>
+        )}
+      </div>
     </div>
   );
 }
