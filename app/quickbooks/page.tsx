@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from 'react';
+import { supabase } from '@/lib/supabase'; // Supabase client for fetching realm ID
 
 /** Simple QuickBooks integration page.
  *  - Shows a "Connect QuickBooks" button that redirects to the OAuth start route.
@@ -8,6 +9,8 @@ import { useEffect, useState } from 'react';
  */
 export default function QuickbooksPage() {
   const [company, setCompany] = useState<any>(null);
+  // The QuickBooks realm identifier is stored in the quickbooks_tokens table, not in the company payload.
+  const [realmId, setRealmId] = useState<string>('');
   const [engagements, setEngagements] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -21,6 +24,8 @@ export default function QuickbooksPage() {
   const [plan, setPlan] = useState<any[]>([]);
   const [planLoading, setPlanLoading] = useState(true);
   const [planError, setPlanError] = useState<string | null>(null);
+  // History state: map catalog_id -> { loading, error, data }
+  const [historyMap, setHistoryMap] = useState<Record<string, { loading: boolean; error: string | null; data: any[] }>>({});
 
   // Form state
   const [auditType, setAuditType] = useState('Year-end Audit');
@@ -33,6 +38,15 @@ export default function QuickbooksPage() {
       if (!res.ok) throw new Error('Failed to load company info');
       const data = await res.json();
       setCompany(data);
+
+      // After we have the company info, fetch the stored QuickBooks token to obtain the realm ID.
+      const { data: tokenData, error: tokenErr } = await supabase
+        .from('quickbooks_tokens')
+        .select('realm_id')
+        .single();
+      if (!tokenErr && tokenData?.realm_id) {
+        setRealmId(tokenData.realm_id);
+      }
     } catch (e: any) {
       setError(e.message);
     }
@@ -69,10 +83,11 @@ export default function QuickbooksPage() {
         return;
       }
       const data = await res.json();
+      // Update plan first, then clear loading flag to avoid a race where the UI renders before the plan is set.
       setPlan(data);
+      setPlanLoading(false);
     } catch (e: any) {
       setPlanError(e.message);
-    } finally {
       setPlanLoading(false);
     }
   };
@@ -100,6 +115,38 @@ export default function QuickbooksPage() {
     };
     init();
   }, []);
+
+  // After plan and company are loaded, fetch history for each manual evidence item
+  useEffect(() => {
+    if (planLoading || !company) return;
+    const manualItems = plan.filter((item: any) => !item.auto_collectable);
+    manualItems.forEach((item: any) => {
+      const catalogId = item.catalog_id;
+      // Initialize loading state for this catalog
+      setHistoryMap(prev => ({
+        ...prev,
+        [catalogId]: { loading: true, error: null, data: [] },
+      }));
+      // Use the realmId fetched from the token table (fallback to empty string)
+      fetch(`/api/evidence/history?realm_id=${realmId}&catalog_id=${catalogId}`)
+        .then(res => {
+          if (!res.ok) throw new Error('Failed to load history');
+          return res.json();
+        })
+        .then(data => {
+          setHistoryMap(prev => ({
+            ...prev,
+            [catalogId]: { loading: false, error: null, data },
+          }));
+        })
+        .catch(e => {
+          setHistoryMap(prev => ({
+            ...prev,
+            [catalogId]: { loading: false, error: e.message, data: [] },
+          }));
+        });
+    });
+  }, [planLoading, company, plan, realmId]);
 
   const handleConnect = () => {
     window.location.href = '/api/auth/intuit';
@@ -193,6 +240,37 @@ export default function QuickbooksPage() {
                     <p>Description: {item.description || '(No description)'}</p>
                     <p>Collection: {item.auto_collectable ? 'Auto Collect' : 'Manual'}</p>
                     <p>Status: {item.status}</p>
+                    {/* Manual items: show history */}
+                    {!item.auto_collectable && (
+                      <div style={{ marginTop: '0.5rem', paddingLeft: '1rem' }}>
+                        {historyMap[item.catalog_id]?.loading && <p>Loading history...</p>}
+                        {historyMap[item.catalog_id]?.error && (
+                          <p style={{ color: 'red' }}>Failed to load history.</p>
+                        )}
+                        {historyMap[item.catalog_id] &&
+                          !historyMap[item.catalog_id].loading &&
+                          !historyMap[item.catalog_id].error && (
+                            <>
+                              {historyMap[item.catalog_id].data.length === 0 ? (
+                                <p>No historical records.</p>
+                              ) : (
+                                historyMap[item.catalog_id].data.map((h: any, idx: number) => (
+                                  <div key={idx} style={{ marginBottom: '0.5rem' }}>
+                                    <p>FY{h.fiscal_year}</p>
+                                    <p>{h.provider_name}</p>
+                                    {h.job_title && <p>{h.job_title}</p>}
+                                    {h.department && <p>{h.department}</p>}
+                                    {h.days_to_receive !== null && (
+                                      <p>Received in {h.days_to_receive} days</p>
+                                    )}
+                                    {h.notes && <p>{h.notes}</p>}
+                                  </div>
+                                ))
+                              )}
+                            </>
+                          )}
+                      </div>
+                    )}
                   </div>
                 ))}
             </section>
@@ -209,6 +287,37 @@ export default function QuickbooksPage() {
                     <p>Description: {item.description || '(No description)'}</p>
                     <p>Collection: {item.auto_collectable ? 'Auto Collect' : 'Manual'}</p>
                     <p>Status: {item.status}</p>
+                    {/* Manual items: show history */}
+                    {!item.auto_collectable && (
+                      <div style={{ marginTop: '0.5rem', paddingLeft: '1rem' }}>
+                        {historyMap[item.catalog_id]?.loading && <p>Loading history...</p>}
+                        {historyMap[item.catalog_id]?.error && (
+                          <p style={{ color: 'red' }}>Failed to load history.</p>
+                        )}
+                        {historyMap[item.catalog_id] &&
+                          !historyMap[item.catalog_id].loading &&
+                          !historyMap[item.catalog_id].error && (
+                            <>
+                              {historyMap[item.catalog_id].data.length === 0 ? (
+                                <p>No historical records.</p>
+                              ) : (
+                                historyMap[item.catalog_id].data.map((h: any, idx: number) => (
+                                  <div key={idx} style={{ marginBottom: '0.5rem' }}>
+                                    <p>FY{h.fiscal_year}</p>
+                                    <p>{h.provider_name}</p>
+                                    {h.job_title && <p>{h.job_title}</p>}
+                                    {h.department && <p>{h.department}</p>}
+                                    {h.days_to_receive !== null && (
+                                      <p>Received in {h.days_to_receive} days</p>
+                                    )}
+                                    {h.notes && <p>{h.notes}</p>}
+                                  </div>
+                                ))
+                              )}
+                            </>
+                          )}
+                      </div>
+                    )}
                   </div>
                 ))}
             </section>
