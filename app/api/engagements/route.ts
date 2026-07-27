@@ -102,11 +102,11 @@ export async function POST(request: Request) {
     }
 
     // Prepare evidence plan rows.
-    const planRows = (catalog as any[]).map(item => ({
-      engagement_id: newEngagement.id,
-      catalog_id: item.id,
-      status: 'pending',
-    }));
+  const planRows = (catalog as any[]).map(item => ({
+    engagement_id: newEngagement.id,
+    catalog_id: item.id,
+    status: 'requested',
+  }));
 
     // Insert evidence plan rows.
     const { error: planErr } = await supabase.from('audit_evidence_plan').insert(planRows);

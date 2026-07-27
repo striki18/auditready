@@ -54,7 +54,7 @@ export async function POST() {
       const planRows = (catalog as any[]).map(item => ({
         engagement_id: engagementId,
         catalog_id: item.id,
-        status: 'pending',
+        status: 'requested',
       }));
 
       // 3️⃣ Insert using upsert to respect the UNIQUE constraint
