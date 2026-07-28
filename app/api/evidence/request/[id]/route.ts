@@ -52,3 +52,95 @@ export async function GET(
     return NextResponse.json({ error: e.message }, { status: 500 });
   }
 }
+
+/**
+ * PATCH /api/evidence/request/[id]
+ *
+ * Updates the status of an evidence request to "received".
+ * Expected JSON body:
+ * {
+ *   "status": "received"
+ * }
+ *
+ * Validation:
+ *   - Valid JSON body
+ *   - "status" field present and exactly "received"
+ *   - "id" route param present and valid UUID
+ *   - Evidence request exists
+ *   - Current status is not already "received"
+ *
+ * Business rules:
+ *   - Update only status, received_at, updated_at fields.
+ *   - Preserve other columns.
+ */
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  // Parse and validate request body
+  let payload: any;
+  try {
+    payload = await request.json();
+  } catch (e) {
+    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
+  }
+
+  const { status } = payload ?? {};
+  if (!status) {
+    return NextResponse.json({ error: 'Missing status' }, { status: 400 });
+  }
+  if (status !== 'received') {
+    return NextResponse.json({ error: 'Invalid status' }, { status: 400 });
+  }
+
+  // Resolve route params
+  const { id } = await params;
+  if (!id) {
+    return NextResponse.json({ error: 'id is required' }, { status: 400 });
+  }
+  const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+  if (!uuidRegex.test(id)) {
+    return NextResponse.json({ error: 'Invalid id' }, { status: 400 });
+  }
+
+  // Fetch existing record
+  const { data: existing, error: fetchError } = await supabase
+    .from('evidence_requests')
+    .select('*')
+    .eq('id', id)
+    .single();
+  if (fetchError) {
+    // If no rows, supabase returns error with code "PGRST116" (or similar). Treat as not found.
+    if ((fetchError as any).code === 'PGRST116' || (fetchError as any).details?.includes('Row not found')) {
+      return NextResponse.json({ error: 'Evidence request not found' }, { status: 404 });
+    }
+    console.error('Failed to fetch evidence request for PATCH:', fetchError);
+    return NextResponse.json({ error: 'Database error' }, { status: 500 });
+  }
+
+  // Business rule: already received?
+  if (existing && existing.status === 'received') {
+    return NextResponse.json({ error: 'Evidence request already received' }, { status: 409 });
+  }
+
+  // Perform update
+  const now = new Date().toISOString();
+  const { data: updated, error: updateError } = await supabase
+    .from('evidence_requests')
+    .update({
+      status: 'received',
+      received_at: now,
+      updated_at: now,
+    })
+    .eq('id', id)
+    .select();
+
+  if (updateError) {
+    console.error('Failed to update evidence request:', updateError);
+    return NextResponse.json({ error: 'Database error' }, { status: 500 });
+  }
+
+  // supabase returns an array; return first element
+  const result = Array.isArray(updated) ? updated[0] : updated;
+  return NextResponse.json(result);
+}
