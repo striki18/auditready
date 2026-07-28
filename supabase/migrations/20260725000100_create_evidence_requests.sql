@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS evidence_requests (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   engagement_id UUID NOT NULL,
   plan_id UUID NOT NULL,
-  status TEXT NOT NULL DEFAULT 'pending',
+  status TEXT NOT NULL DEFAULT 'requested',
   requested_at TIMESTAMPTZ,
   received_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ DEFAULT now(),

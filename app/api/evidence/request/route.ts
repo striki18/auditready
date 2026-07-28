@@ -26,11 +26,25 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Invalid engagement_id' }, { status: 400 });
     }
 
-    const { data, error } = await supabase
-      .from('evidence_requests')
-      .select('*')
-      .eq('engagement_id', engagementId)
-      .order('created_at', { ascending: true });
+  // Optional status filtering
+  const status = searchParams.get('status');
+  // Validate status if provided
+  if (status && !['requested', 'received', 'all'].includes(status)) {
+    return NextResponse.json({ error: 'Invalid status' }, { status: 400 });
+  }
+
+  // Build base query
+  let query = supabase
+    .from('evidence_requests')
+    .select('*')
+    .eq('engagement_id', engagementId);
+
+  // Apply status filter unless omitted or set to 'all'
+  if (status && status !== 'all') {
+    query = query.eq('status', status);
+  }
+
+  const { data, error } = await query.order('created_at', { ascending: true });
 
     if (error) {
       console.error('Failed to fetch evidence requests:', error);
