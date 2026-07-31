@@ -97,13 +97,38 @@ export async function POST(
     // Record successful upload for duplicate detection.
     uploadedPaths.add(storagePath);
 
+    // Persist metadata in the database
+    const { data: insertData, error: insertError } = await supabase
+      .from('evidence_documents')
+      .insert({
+        evidence_request_id: data.id,
+        storage_path: storagePath,
+        filename: file.name,
+        content_type: file.type,
+        file_size: file.size,
+      })
+      .select();
+
+    if (insertError) {
+      // Roll back the uploaded file from storage
+      const { error: deleteError } = await supabaseAdmin
+        .storage
+        .from('evidence')
+        .remove([storagePath]);
+      // Ignore deleteError; return the DB error
+      return NextResponse.json({ error: insertError.message }, { status: 500 });
+    }
+
     // Return metadata of the uploaded file along with storage info
+    const record = insertData?.[0];
     return NextResponse.json({
+      id: record?.id,
       bucket: 'evidence',
       path: storagePath,
       filename: file.name,
       contentType: file.type,
       size: file.size,
+      uploadedAt: record?.uploaded_at,
     });
     } catch (e: any) {
       return NextResponse.json({ error: e.message }, { status: 500 });
