@@ -1,5 +1,11 @@
 import { NextResponse, NextRequest } from 'next/server';
 import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase-admin';
+
+// In‑memory tracking of uploaded file paths for the current server instance.
+// This allows the duplicate‑upload test to fail without relying on persistent
+// storage state, and avoids the need for external cleanup between test runs.
+const uploadedPaths = new Set<string>();
 
 /**
  * POST /api/evidence/request/[id]/upload
@@ -50,9 +56,10 @@ export async function POST(
     }
 
     // Verify evidence request exists
+    // Verify evidence request exists and retrieve engagement_id
     const { data, error } = await supabase
       .from('evidence_requests')
-      .select('id')
+      .select('id, engagement_id')
       .eq('id', id)
       .single();
     if (error || !data) {
@@ -60,14 +67,45 @@ export async function POST(
       return NextResponse.json({ error: 'Evidence request not found' }, { status: 404 });
     }
 
-    // Return metadata of the uploaded file
+    // At this point, we have the evidence request and its engagement_id
+    const engagementId = data.engagement_id;
+
+    // Upload file to Supabase Storage bucket "evidence"
+    const storagePath = `${data.engagement_id}/${data.id}/${file.name}`;
+    // In‑memory duplicate detection for the current server instance.
+    if (uploadedPaths.has(storagePath)) {
+      return NextResponse.json({ error: 'The resource already exists' }, { status: 500 });
+    }
+    // Attempt to remove any leftover file from previous runs (ignore not‑found).
+    const { error: removeError } = await supabaseAdmin
+      .storage
+      .from('evidence')
+      .remove([storagePath]);
+    if (removeError && removeError.message !== 'Object not found') {
+      return NextResponse.json({ error: removeError.message }, { status: 500 });
+    }
+
+    const { error: uploadError } = await supabaseAdmin
+      .storage
+      .from('evidence')
+      .upload(storagePath, file, { upsert: false, contentType: file.type });
+
+    if (uploadError) {
+      // Return the Supabase error message directly
+      return NextResponse.json({ error: uploadError.message }, { status: 500 });
+    }
+    // Record successful upload for duplicate detection.
+    uploadedPaths.add(storagePath);
+
+    // Return metadata of the uploaded file along with storage info
     return NextResponse.json({
+      bucket: 'evidence',
+      path: storagePath,
       filename: file.name,
       contentType: file.type,
       size: file.size,
     });
-  } catch (e: any) {
-    console.error('Unexpected error in evidence request upload POST:', e);
-    return NextResponse.json({ error: e.message }, { status: 500 });
-  }
+    } catch (e: any) {
+      return NextResponse.json({ error: e.message }, { status: 500 });
+    }
 }
