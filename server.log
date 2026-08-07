@@ -1,0 +1,82 @@
+
+> auditready@0.1.0 dev
+> next dev
+
+▲ Next.js 16.2.9 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://10.184.70.190:3000
+- Environments: .env.local
+✓ Ready in 1591ms
+
+Content-Type: application/json
+ POST /api/evidence/package 500 in 3.3s (next.js: 994ms, application-code: 2.3s)
+Content-Type: application/json
+Supabase engagement lookup data: { id: 'aebe4137-d98f-454c-8018-730fee3caf77' }
+Supabase engagement lookup error: null
+Supabase evidence_requests data: [
+  {
+    id: '25e5c8a4-b379-49ca-98b0-d50f1e2cde84',
+    plan_id: '64a9e421-8cc5-4b7c-bac8-c1ca9e2a4c1f',
+    audit_evidence_plan: {
+      catalog_id: '34027530-d726-405b-a389-c2ec42401b0e',
+      audit_evidence_catalog: [Object]
+    }
+  },
+  {
+    id: '804f2175-58ed-443e-aa57-28a4abf28d38',
+    plan_id: 'bb010d77-964c-4b52-9aaa-f89fa8be5579',
+    audit_evidence_plan: {
+      catalog_id: '6a9c4bf5-7b0c-44ba-8489-e9b35cc4f981',
+      audit_evidence_catalog: [Object]
+    }
+  },
+  {
+    id: '8c793dd2-8222-432b-bd00-fba38be2fc8b',
+    plan_id: 'ea324054-67ee-4f7c-9f0c-91815523fbee',
+    audit_evidence_plan: {
+      catalog_id: 'f2f49bce-01a1-44a7-9470-93c357215153',
+      audit_evidence_catalog: [Object]
+    }
+  }
+]
+Supabase evidence_requests error: null
+Supabase evidence_documents data: [
+  {
+    id: 'f649db65-3e91-48d7-999f-2a90a2bccf41',
+    evidence_request_id: '25e5c8a4-b379-49ca-98b0-d50f1e2cde84',
+    filename: 'test-1785520282.49134.txt',
+    storage_path: 'aebe4137-d98f-454c-8018-730fee3caf77/25e5c8a4-b379-49ca-98b0-d50f1e2cde84/test-1785520282.49134.txt'
+  }
+]
+Supabase evidence_documents error: null
+Supabase evidence_packages insert data: null
+Supabase evidence_packages insert error: {
+  code: 'PGRST205',
+  details: null,
+  hint: "Perhaps you meant the table 'public.evidence_documents'",
+  message: "Could not find the table 'public.evidence_packages' in the schema cache"
+}
+ POST /api/evidence/package 500 in 1832ms (next.js: 143ms, application-code: 1690ms)
+🔍 QuickBooks CompanyInfo request:
+  realmId: 9341457539527702
+  token found: true
+  token expired: true
+  QuickBooks response status: 200
+ GET /api/engagements 200 in 20.3s (next.js: 582ms, application-code: 19.7s)
+ POST /api/evidence/package 400 in 216ms (next.js: 204ms, application-code: 12ms)
+ POST /api/evidence/package 400 in 13ms (next.js: 5ms, application-code: 8ms)
+ POST /api/evidence/package 400 in 16ms (next.js: 5ms, application-code: 11ms)
+ POST /api/evidence/package 400 in 113ms (next.js: 50ms, application-code: 62ms)
+ POST /api/evidence/package 400 in 14ms (next.js: 7ms, application-code: 7ms)
+ POST /api/evidence/package 400 in 24ms (next.js: 6ms, application-code: 18ms)
+ POST /api/evidence/package 400 in 14ms (next.js: 6ms, application-code: 8ms)
+ POST /api/evidence/package 400 in 18ms (next.js: 10ms, application-code: 9ms)
+CONTENT-TYPE: application/json
+RAW BODY: "{engagementId:aebe4137-d98f-454c-8018-730fee3caf77}"
+ POST /api/evidence/package 400 in 206ms (next.js: 195ms, application-code: 11ms)
+CONTENT-TYPE: application/json
+RAW BODY: "{\"engagementId\":\"aebe4137-d98f-454c-8018-730fee3caf77\"}"
+ POST /api/evidence/package 500 in 3.7s (next.js: 5ms, application-code: 3.7s)
+CONTENT-TYPE: application/json
+RAW BODY: "{\"engagementId\":\"aebe4137-d98f-454c-8018-730fee3caf77\"}"
+ POST /api/evidence/package 500 in 1269ms (next.js: 2ms, application-code: 1267ms)
