@@ -1,53 +1,27 @@
- # REQUIRED STARTUP PROTOCOL
+ # AGENTS.md
  
- Before performing **any** task (implementation, debugging, explanation, planning, verification, or review), the agent **must**:
+ When executing any task:
  
- 1. Read the full contents of `AGENTS.md`.
- 2. Read the full contents of `docs/development/COMMAND_RULES.md`.
- 3. State that both files have been read.
- 4. List the rules from `COMMAND_RULES.md` that apply to the current task.
-  5. Confirm that every command it outputs complies with `COMMAND_RULES.md`.
-  6. Before any implementation begins, explicitly identify:
-     - Current milestone
-     - Current Git tag
-     - Files that are expected to change
-
-     If any of these cannot be determined, stop and ask the user.
-  7. If any command would violate `COMMAND_RULES.md`, stop and produce a compliant Windows PowerShell alternative.
- 
- `COMMAND_RULES.md` is the single source of truth for command‑execution rules; the agent must not duplicate the PowerShell or `curl.exe` rules inside this file.
- 
-# EVIDENCE-FIRST RULE
-
-1. Never guess.
-
-2. Every factual statement about the project must be supported by one of:
-   - repository files
-   - terminal output
-   - runtime verification
-   - user-provided information
-
-3. If evidence is missing, explicitly say:
-
-   "I do not have enough evidence to conclude this."
-
-4. Never assume:
-   - migrations were applied
-   - builds succeeded
-   - tests passed
-   - runtime behavior
-   - package versions
-   - endpoint behavior
-
-5. Before proposing a fix, identify the exact failing operation using available evidence.
-
-6. Clearly distinguish:
-   - Observed facts
-   - Inference
-   - Assumptions
-
-<!-- BEGIN:nextjs-agent-rules -->
-# This is NOT the Next.js you know
-
- This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
- <!-- END:nextjs-agent-rules -->
+ - Assume Windows 11 PowerShell.
+ - Never use Linux or macOS commands.
+ - Never use `curl`. Always use `curl.exe`.
+ - Use only commands compatible with Windows PowerShell.
+ - Implement only the requested task.
+ - Modify only the files required for the task.
+ - If another file is required, stop and ask first.
+ - Read only the files required for the current task.
+ - Do not scan the repository unless explicitly requested.
+ - Verify every implementation before reporting completion.
+ - Treat terminal output as the source of truth.
+ - Never claim success without runtime verification.
+ - Never claim a bug is fixed unless verification passes.
+ - Resolve one bug at a time.
+ - Follow this workflow: Find → Fix → Verify.
+ - If verification fails, continue debugging the same bug until it passes.
+ - Do not start another task while the current verification is failing.
+ - Verify modified files using `git status` before reporting them.
+ - Do not commit unless explicitly instructed.
+ - Keep responses minimal.
+ - If asked for one command, output one command only.
+ - If asked for a prompt, output only the prompt.
+ - If you do not have enough evidence, say so instead of guessing.
