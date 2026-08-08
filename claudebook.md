@@ -22,6 +22,44 @@ Living execution/status tracker for the AuditReady Build Checklist.
 
 ---
 
+## Dashboard
+
+**Phases**
+- Total tracked phases: 14
+- Completed phases: 1
+- In‑progress phases: 3
+- Not‑started phases: 10
+- Blocked phases: 0
+
+**Milestones**
+- Total milestones: 54
+- Completed milestones: 6
+- In‑progress milestones: 2
+- Not‑started milestones: 46
+- Blocked milestones: 0
+
+**Current status**
+- Current phase: Phase 2 — Pull Transactions
+- Current sub‑phase: 2A — QBO transaction API setup
+- Last verified milestone: Phase 1 — QBO OAuth Connection (3/3)
+- Next milestone: Retrieve real sandbox transactions through QBO.
+
+**Phase progress**
+- Phase 0 — Developer Environment: 2/3
+- Phase 1 — QBO OAuth Connection: 3/3
+- Phase 2 — Pull Transactions: 0/4
+- Phase 3 — Pull Attachments via Attachable API: 0/5
+- Phase 4 — The Mapping Join: 0/4
+- Phase 5 — Download Attachment Files: 0/5
+- Phase 6 — Generate CSV Outputs: 0/4
+- Phase 7 — Generate ZIP Package: 0/3
+- Phase 8 — End‑to‑End Script: 0/5
+- Phase 9 — Minimal Web UI: 0/4
+- Phase 10 — Rate Limit Handling: 0/3
+- Phase 11 — Token Refresh: 0/3
+- Phase 12 — Real Company Test: 0/5
+- Phase 13 — First Interviews With Output: 0/3
+
 # PHASE 0 — Developer Environment
 **Status: [~] Not fully verified — 0/3**
 
