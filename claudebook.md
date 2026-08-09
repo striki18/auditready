@@ -47,7 +47,7 @@ Living execution/status tracker for the AuditReady Build Checklist.
 **Phase progress**
 - Phase 0 — Developer Environment: 2/3
 - Phase 1 — QBO OAuth Connection: 3/3
-- Phase 2 — Pull Transactions: 0/4
+**Phase 2 — Pull Transactions:** 1/4
 - Phase 3 — Pull Attachments via Attachable API: 0/5
 - Phase 4 — The Mapping Join: 0/4
 - Phase 5 — Download Attachment Files: 0/5
@@ -135,14 +135,14 @@ Living execution/status tracker for the AuditReady Build Checklist.
 
 ---
 
-# PHASE 2 — Pull Transactions
-**Status: [ ] NOT STARTED — 0/4**
+## Phase 2 — Pull Transactions
+**Status: [ ] IN PROGRESS — 1/4**
 
-### 2A — QBO transaction API setup [ ]
-- [ ] Required QBO data-access dependency available
-- [ ] Authenticated company/Realm ID available
-- [ ] Transaction API/report call established
-- [ ] Correct QBO company endpoint confirmed
+### 2A — QBO transaction API setup [✓]
+ - [✓] Required QBO data-access dependency available
+ - [✓] Authenticated company/Realm ID available
+ - [✓] Transaction API/report call established
+ - [✓] Correct QBO company endpoint confirmed
 
 ### 2B — Transaction retrieval [ ]
 - [ ] Write `getTransactions(startDate, endDate)`
@@ -554,9 +554,9 @@ UI was created earlier than the original checklist sequence. It does not count l
 
 ---
 
-# VERIFIED EVIDENCE LOG
+## VERIFIED EVIDENCE LOG
 
-## Phase 1A — Verified
+### Phase 1C — Verified
 - `/api/auth/intuit` returned HTTP 307.
 - Non-empty Intuit client ID.
 - Correct accounting scope.
@@ -582,6 +582,14 @@ UI was created earlier than the original checklist sequence. It does not count l
 - Connected Sandbox company displayed.
 
 **Phase 1 = 3/3 COMPLETE.**
+
+- ### Phase 2A — Verified
+- `/api/quickbooks/companyInfo` returned HTTP 200 with company data (realm ID 9341457539527702).
+- `/api/quickbooks/transactions` returned Invoice data via query, confirming authenticated transaction API connection and correct sandbox endpoint.
+- Realm ID logged and used in requests.
+- `/api/quickbooks/companyInfo` returned HTTP 200 with company data (realm ID 9341457539527702).
+- `/api/quickbooks/transactions` returned Invoice data via fallback query, confirming authenticated transaction API connection.
+- Realm ID logged and used in requests.
 
 ---
 

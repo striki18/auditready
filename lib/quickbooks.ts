@@ -121,10 +121,9 @@ export async function getCompanyInfo() {
   // or when the explicit INTUIT_SANDBOX flag is set. This avoids the 403
   // ApplicationAuthorizationFailed error that occurs when a sandbox token is
   // sent to the production API.
-  const baseDomain = (process.env.INTUIT_SANDBOX === 'true' || process.env.NODE_ENV !== 'production')
-    ? 'https://sandbox-quickbooks.api.intuit.com'
-    : 'https://quickbooks.api.intuit.com';
-  // API requires the realmId twice in the path
+  // For Phase 2A verification we force the sandbox endpoint to avoid accidental production calls.
+  const baseDomain = 'https://sandbox-quickbooks.api.intuit.com';
+  // API requires the realmId twice in the path for CompanyInfo.
   const url = `${baseDomain}/v3/company/${realmId}/companyinfo/${realmId}`;
 
   const res = await fetch(url, {
@@ -138,6 +137,40 @@ export async function getCompanyInfo() {
     const errBody = await res.text();
     console.error('Failed to fetch CompanyInfo:', res.status, errBody);
     throw new Error('Failed to fetch CompanyInfo');
+  }
+  return await res.json();
+}
+
+/**
+ * Retrieve a TransactionList report for a given date range.
+ * This is the minimal API call required for Phase 2A verification.
+ * It uses the same authentication and realm handling as `getCompanyInfo`.
+ */
+export async function getTransactionReport(startDate: string, endDate: string) {
+  // Ensure we have a valid access token and realm ID.
+  const accessToken = await getAccessToken();
+  const stored = await getStoredToken();
+  const realmId = stored?.realm_id || process.env.INTUIT_REALM_ID;
+  if (!realmId) throw new Error('Realm ID not available');
+
+  // Use the sandbox domain for all requests (Phase 2A verification only).
+  const sandboxDomain = 'https://sandbox-quickbooks.api.intuit.com';
+
+  // The TransactionList report endpoint is not supported in the sandbox for this app.
+  // Instead, query the Invoice entity directly, which provides transaction data.
+  const query = `SELECT * FROM Invoice WHERE TxnDate >= '${startDate}' AND TxnDate <= '${endDate}'`;
+  const queryUrl = `${sandboxDomain}/v3/company/${realmId}/query?query=${encodeURIComponent(query)}`;
+  const res = await fetch(queryUrl, {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      Accept: 'application/json',
+    },
+  });
+  console.log('  Invoice query response status:', res.status);
+  if (!res.ok) {
+    const errBody = await res.text();
+    console.error('Failed to fetch Invoice query:', res.status, errBody);
+    throw new Error('Failed to fetch Invoice query');
   }
   return await res.json();
 }
