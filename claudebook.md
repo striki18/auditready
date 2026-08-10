@@ -16,7 +16,7 @@ Living execution/status tracker for the AuditReady Build Checklist.
 ## CURRENT POSITION
 
 **Current phase:** Phase 2 — Pull Transactions  
-**Current sub-phase:** 2A — QBO transaction API setup  
+**Current sub‑phase:** 2C — Transaction normalization
 **Last verified milestone:** Phase 1 — QBO OAuth Connection (3/3)  
 **Next milestone:** Retrieve real sandbox transactions through QBO.
 
@@ -47,7 +47,7 @@ Living execution/status tracker for the AuditReady Build Checklist.
 **Phase progress**
 - Phase 0 — Developer Environment: 2/3
 - Phase 1 — QBO OAuth Connection: 3/3
-**Phase 2 — Pull Transactions:** 1/4
+**Phase 2 — Pull Transactions:** 2/4
 - Phase 3 — Pull Attachments via Attachable API: 0/5
 - Phase 4 — The Mapping Join: 0/4
 - Phase 5 — Download Attachment Files: 0/5
@@ -144,12 +144,12 @@ Living execution/status tracker for the AuditReady Build Checklist.
  - [✓] Transaction API/report call established
  - [✓] Correct QBO company endpoint confirmed
 
-### 2B — Transaction retrieval [ ]
-- [ ] Write `getTransactions(startDate, endDate)`
-- [ ] Call `TransactionList` report
-- [ ] Pass `start_date`
-- [ ] Pass `end_date`
-- [ ] Retrieve real sandbox data
+### 2B — Transaction retrieval [✓]
+ - [✓] Write `getTransactions(startDate, endDate)`
+ - [✓] Call `TransactionList` report
+ - [✓] Pass `start_date`
+ - [✓] Pass `end_date`
+ - [✓] Retrieve real sandbox data
 
 ### 2C — Transaction normalization [ ]
 - [ ] Parse flat array

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getTransactionReport } from '@/lib/quickbooks';
+import { getTransactions } from '@/lib/quickbooks';
 
 /**
  * GET /api/quickbooks/transactions?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD
@@ -12,7 +12,7 @@ export async function GET(request: Request) {
     const startDate = url.searchParams.get('startDate') ?? '2023-01-01';
     const endDate = url.searchParams.get('endDate') ?? '2023-01-31';
 
-    const data = await getTransactionReport(startDate, endDate);
+  const data = await getTransactions(startDate, endDate);
     return NextResponse.json(data);
   } catch (e: any) {
     console.error('TransactionReport error:', e);
