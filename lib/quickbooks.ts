@@ -2,7 +2,7 @@
  * QuickBooks API client handling token retrieval, auto‑refresh, and helper methods.
  * It uses the Supabase table `quickbooks_tokens` for persistent storage.
  */
-import { supabase } from '@/lib/supabase';
+import { supabase } from './supabase.js';
 
 let memoryCache: any = null;
 
@@ -243,5 +243,73 @@ export async function getTransactions(startDate: string, endDate: string) {
     console.error('Failed to fetch TransactionList report:', res.status, errBody);
     throw new Error('Failed to fetch TransactionList report');
   }
-  return await res.json();
+  const raw = await res.json();
+  // Log the raw response for debugging (optional). Include full JSON for inspection.
+  console.log('🔍 TransactionList raw response received');
+  console.log('🔍 Raw TransactionList content:', JSON.stringify(raw, null, 2));
+  // Perform normalization and log the result.
+  const normalized = normalizeTransactionList(raw);
+  console.log('🔍 Normalized TransactionList:', JSON.stringify(normalized, null, 2));
+  return raw;
+}
+
+/**
+ * Normalize the TransactionList report into a flat array of transaction objects.
+ *
+ * The TransactionList report contains a header section that defines column titles
+ * and a rows section where each row contains column data. This function extracts the
+ * column titles, then maps each row's data to the required normalized shape:
+ *   {
+ *     txnId: string | null,   // Transaction Type column's `id` if present
+ *     txnType: string | null, // Transaction Type column value
+ *     date: string | null,    // Date column value
+ *     vendor: string | null,  // Name column value
+ *     amount: number | null, // Amount column value converted to number
+ *     docNumber: string | null // Num column value
+ *   }
+ *
+ * Fields that are missing or empty are preserved as null.
+ */
+export function normalizeTransactionList(report: any) {
+  if (!report) return [];
+  // The QuickBooks sandbox response places Columns and Rows at the top level,
+  // while some documentation references a nested `Report` object. Support both.
+  const columns = report?.Report?.Columns?.Column ?? report?.Columns?.Column ?? [];
+  const headers: string[] = columns.map((c: any) => c?.ColTitle ?? '');
+
+  // Helper to find index of a column by its title.
+  const idx = (title: string) => headers.findIndex((h) => h === title);
+
+  const rows = report?.Report?.Rows?.Row ?? report?.Rows?.Row ?? [];
+  const normalized = rows.map((row: any) => {
+    const colData = row?.ColData ?? [];
+    // Extract raw values and possible ids.
+    const getValue = (i: number) => (colData[i] ? colData[i].value ?? null : null);
+    const getId = (i: number) => (colData[i] && typeof colData[i].id !== 'undefined' ? colData[i].id : null);
+
+    const txnTypeIdx = idx('Transaction Type');
+    const dateIdx = idx('Date');
+    const nameIdx = idx('Name');
+    const amountIdx = idx('Amount');
+    const numIdx = idx('Num');
+
+    const rawTxnId = txnTypeIdx !== -1 ? getId(txnTypeIdx) : null;
+    const rawTxnType = txnTypeIdx !== -1 ? getValue(txnTypeIdx) : null;
+    const rawDate = dateIdx !== -1 ? getValue(dateIdx) : null;
+    const rawVendor = nameIdx !== -1 ? getValue(nameIdx) : null;
+    const rawAmount = amountIdx !== -1 ? getValue(amountIdx) : null;
+    const rawDocNumber = numIdx !== -1 ? getValue(numIdx) : null;
+
+    const amountNumber = rawAmount !== null && rawAmount !== '' ? Number(rawAmount) : null;
+
+    return {
+      txnId: rawTxnId ?? null,
+      txnType: rawTxnType ?? null,
+      date: rawDate ?? null,
+      vendor: rawVendor ?? null,
+      amount: amountNumber,
+      docNumber: rawDocNumber ?? null,
+    };
+  });
+  return normalized;
 }

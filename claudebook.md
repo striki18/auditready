@@ -151,15 +151,15 @@ Living execution/status tracker for the AuditReady Build Checklist.
  - [✓] Pass `end_date`
  - [✓] Retrieve real sandbox data
 
-### 2C — Transaction normalization [ ]
-- [ ] Parse flat array
-- [ ] `txnId`
-- [ ] `txnType`
-- [ ] `date`
-- [ ] `vendor`
-- [ ] `amount`
-- [ ] `docNumber`
-- [ ] Log/inspect normalized array
+### 2C — Transaction normalization [✓]
+- [✓] Parse flat array
+- [✓] `txnId`
+- [✓] `txnType`
+- [✓] `date`
+- [✓] `vendor`
+- [✓] `amount`
+- [✓] `docNumber`
+- [✓] Log/inspect normalized array
 
 ### 2D — Sandbox verification [ ]
 - [ ] Run required sandbox date range
