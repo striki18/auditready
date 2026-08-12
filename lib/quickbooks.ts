@@ -2,7 +2,7 @@
  * QuickBooks API client handling token retrieval, auto‑refresh, and helper methods.
  * It uses the Supabase table `quickbooks_tokens` for persistent storage.
  */
-import { supabase } from './supabase.js';
+import { supabase } from './supabase';
 
 let memoryCache: any = null;
 
