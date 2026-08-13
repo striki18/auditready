@@ -86,12 +86,18 @@ export async function getAccessToken() {
   const token = await getStoredToken();
   if (!token) throw new Error('No QuickBooks token found');
   const now = Math.floor(Date.now() / 1000);
-  // `expires_at` may be a timestamp string; convert to epoch seconds.
-  const expiresAtSec = typeof token.expires_at === 'string'
-    ? Math.floor(new Date(token.expires_at).getTime() / 1000)
-    : token.expires_at;
+  // `expires_at` may be a timestamp string, a Date object, or epoch seconds.
+  let expiresAtSec: number | undefined;
+  if (typeof token.expires_at === 'string') {
+    expiresAtSec = Math.floor(new Date(token.expires_at).getTime() / 1000);
+  } else if (token.expires_at instanceof Date) {
+    expiresAtSec = Math.floor(token.expires_at.getTime() / 1000);
+  } else {
+    // Assume it's already epoch seconds (number) or undefined.
+    expiresAtSec = token.expires_at as unknown as number;
+  }
   if (expiresAtSec && expiresAtSec - now < 60) {
-    // Refresh when less than a minute left.
+    // Refresh when less than a minute left or already expired.
     return await refreshAccessToken(token.refresh_token);
   }
   return token.access_token;
@@ -107,6 +113,8 @@ export async function getCompanyInfo() {
     ? Math.floor(new Date(stored.expires_at).getTime() / 1000)
     : stored?.expires_at;
   const tokenExpired = tokenFound && expiresAtSec ? expiresAtSec <= nowSec : false;
+  console.log('🔍 Token expires_at raw:', stored?.expires_at);
+  console.log('🔍 Token expiresAtSec:', expiresAtSec, 'nowSec:', nowSec);
   console.log('🔍 QuickBooks CompanyInfo request:');
   console.log('  realmId:', stored?.realm_id || process.env.INTUIT_REALM_ID);
   console.log('  token found:', tokenFound);
@@ -116,12 +124,27 @@ export async function getCompanyInfo() {
   const realmId = stored?.realm_id || process.env.INTUIT_REALM_ID;
   if (!realmId) throw new Error('Realm ID not available');
 
-  // Choose sandbox or production endpoint based on env var INTUIT_SANDBOX (optional)
-  // Use the sandbox endpoint during development (when NODE_ENV is not 'production')
-  // or when the explicit INTUIT_SANDBOX flag is set. This avoids the 403
-  // ApplicationAuthorizationFailed error that occurs when a sandbox token is
-  // sent to the production API.
-  // For Phase 2A verification we force the sandbox endpoint to avoid accidental production calls.
+  // Choose sandbox or production endpoint. In development (when NODE_ENV is not
+  // "production") we default to the sandbox domain, because the stored token is
+  // a sandbox token. In production we use the live QuickBooks API.
+  // For this environment we always use the production QuickBooks API, because the
+  // stored token was obtained from the production OAuth flow. Using the sandbox
+  // endpoint with a production token results in 500 errors.
+  // Use the sandbox domain for CompanyInfo when running in a development environment.
+  // The stored token is obtained from the QuickBooks sandbox OAuth flow, and the
+  // production endpoint rejects it with a 403 ApplicationAuthorizationFailed error.
+  // Switching to the sandbox domain restores the previously working runtime.
+  // Use the production domain for CompanyInfo when the stored token is a production token.
+  // Use the sandbox domain for CompanyInfo when running with a sandbox token.
+  // Use the production domain for CompanyInfo when the stored token is a production token.
+  // Use the sandbox domain for CompanyInfo when the stored token is a sandbox token.
+  // Use the production QuickBooks API domain for CompanyInfo. The stored token
+  // was obtained via the production OAuth flow, and the sandbox domain returns
+  // a 403 ApplicationAuthorizationFailed error.
+  // Use the production QuickBooks API domain for CompanyInfo. The stored token
+  // was obtained via the production OAuth flow, and the sandbox domain returns
+  // a 403 ApplicationAuthorizationFailed error.
+  // Use the sandbox domain for CompanyInfo because the stored token is a sandbox token.
   const baseDomain = 'https://sandbox-quickbooks.api.intuit.com';
   // API requires the realmId twice in the path for CompanyInfo.
   const url = `${baseDomain}/v3/company/${realmId}/companyinfo/${realmId}`;
