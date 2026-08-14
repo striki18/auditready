@@ -277,6 +277,54 @@ export async function getTransactions(startDate: string, endDate: string) {
 }
 
 /**
+ * Phase 3A – Retrieve Attachable records.
+ *
+ * This function mirrors the pattern used for other QuickBooks API calls:
+ *   1. Obtain a valid access token via `getAccessToken()` (refreshes if needed).
+ *   2. Resolve the `realmId` from stored token or environment.
+ *   3. Issue a QBO query for the `Attachable` entity using the sandbox domain.
+ *   4. Return the raw JSON response (no pagination or normalization –
+ *      those will be added in later sub‑phases).
+ *
+ * The request URL follows the QuickBooks API specification:
+ *   GET https://sandbox-quickbooks.api.intuit.com/v3/company/{realmId}/query?query=SELECT * FROM Attachable
+ *
+ * Errors are thrown for non‑OK HTTP responses so that the verification step can
+ * detect a failure and retry if necessary.
+ */
+export async function getAttachables() {
+  // 1. Authenticate
+  const accessToken = await getAccessToken();
+  // 2. Resolve realm ID
+  const stored = await getStoredToken();
+  const realmId = stored?.realm_id || process.env.INTUIT_REALM_ID;
+  if (!realmId) throw new Error('Realm ID not available');
+
+  // 3. Build query URL – using the sandbox domain (same as other Phase‑2 calls).
+  const sandboxDomain = 'https://sandbox-quickbooks.api.intuit.com';
+  const query = 'SELECT * FROM Attachable';
+  const url = `${sandboxDomain}/v3/company/${realmId}/query?query=${encodeURIComponent(query)}`;
+  console.log('🔍 Attachable query request URL:', url);
+
+  const res = await fetch(url, {
+    method: 'GET',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      Accept: 'application/json',
+    },
+  });
+  console.log('🔍 Attachable query response status:', res.status);
+  if (!res.ok) {
+    const errBody = await res.text();
+    console.error('Failed to fetch Attachable query:', res.status, errBody);
+    throw new Error('Failed to fetch Attachable query');
+  }
+  const raw = await res.json();
+  console.log('🔍 Attachable query raw response received');
+  return raw;
+}
+
+/**
  * Normalize the TransactionList report into a flat array of transaction objects.
  *
  * The TransactionList report contains a header section that defines column titles

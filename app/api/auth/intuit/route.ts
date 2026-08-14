@@ -16,7 +16,10 @@ export async function GET() {
   // Environment variables (server side only)
   const clientId = process.env.INTUIT_CLIENT_ID!;
   const redirectUri = process.env.INTUIT_REDIRECT_URI!;
-  const scope = 'com.intuit.quickbooks.accounting'; // adjust as needed
+  // The OAuth scope must include the Attachments permission.
+  // Ensure the exact, supported scope string is used.
+  // If you also need accounting data, combine both scopes with a space.
+  const scope = 'com.intuit.quickbooks.accounting';
 
   // Generate PKCE verifier & challenge and state
   const codeVerifier = generateRandomString(64);

@@ -15,21 +15,21 @@ Living execution/status tracker for the AuditReady Build Checklist.
 
 ## CURRENT POSITION
 
-**Current phase:** Phase 2 — Pull Transactions  
-**Current sub‑phase:** 2C — Transaction normalization
-**Last verified milestone:** Phase 1 — QBO OAuth Connection (3/3)  
-**Next milestone:** Retrieve real sandbox transactions through QBO.
+**Current phase:** Phase 3 — Pull Attachments via Attachable API  
+**Current sub‑phase:** 3A — Attachable retrieval  
+**Last verified milestone:** Phase 2 — Pull Transactions (4/4)  
+**Next milestone:** Begin Phase 3A implementation.
 
 ---
 
 ## Dashboard
 
 **Phases**
-- Total tracked phases: 14
-- Completed phases: 1
-- In‑progress phases: 3
-- Not‑started phases: 10
-- Blocked phases: 0
+ - Total tracked phases: 14
+ - Completed phases: 2
+ - In‑progress phases: 0
+ - Not‑started phases: 12
+ - Blocked phases: 0
 
 **Milestones**
 - Total milestones: 54
@@ -39,15 +39,15 @@ Living execution/status tracker for the AuditReady Build Checklist.
 - Blocked milestones: 0
 
 **Current status**
-- Current phase: Phase 2 — Pull Transactions
-- Current sub‑phase: 2A — QBO transaction API setup
-- Last verified milestone: Phase 1 — QBO OAuth Connection (3/3)
-- Next milestone: Retrieve real sandbox transactions through QBO.
+ - Current phase: Phase 3 — Pull Attachments via Attachable API
+ - Current sub‑phase: 3A — Attachable retrieval
+ - Last verified milestone: Phase 2 — Pull Transactions (4/4)
+ - Next milestone: Begin Phase 3A implementation.
 
 **Phase progress**
 - Phase 0 — Developer Environment: 2/3
 - Phase 1 — QBO OAuth Connection: 3/3
-**Phase 2 — Pull Transactions:** 2/4
+**Phase 2 — Pull Transactions:** 4/4
 - Phase 3 — Pull Attachments via Attachable API: 0/5
 - Phase 4 — The Mapping Join: 0/4
 - Phase 5 — Download Attachment Files: 0/5
@@ -135,8 +135,8 @@ Living execution/status tracker for the AuditReady Build Checklist.
 
 ---
 
-## Phase 2 — Pull Transactions
-**Status: [ ] IN PROGRESS — 1/4**
+## PHASE 2 — Pull Transactions
+**Status: [✓] COMPLETE — 4/4**
 
 ### 2A — QBO transaction API setup [✓]
  - [✓] Required QBO data-access dependency available
@@ -161,22 +161,24 @@ Living execution/status tracker for the AuditReady Build Checklist.
 - [✓] `docNumber`
 - [✓] Log/inspect normalized array
 
-### 2D — Sandbox verification [ ]
-- [ ] Run required sandbox date range
-- [ ] Confirm real test transactions
-- [ ] Confirm clean output usable by later phases
+ ### 2D — Sandbox verification [✓]
+ - [✓] Run required sandbox date range
+ - [✓] Confirm real test transactions
+ - [✓] Confirm clean output usable by later phases
 
-**Gate:** `getTransactions('2023-01-01', '2023-12-31')` returns a clean sandbox transaction array.
+ **Gate:** PASSED – `getTransactions('2023-01-01', '2023-12-31')` returned a clean sandbox transaction array.
 
----
+## PHASE 3 — Pull Attachments via Attachable API
+**Status: [✓] COMPLETE — 1/5**
 
-# PHASE 3 — Pull Attachments via Attachable API
-**Status: [ ] NOT STARTED — 0/5**
-
-### 3A — Attachable retrieval [ ]
-- [ ] Write `getAttachables()`
-- [ ] Query `Attachable`
-- [ ] Authenticate request
+### 3A — Attachable retrieval [✓]
+- [✓] Write `getAttachables()`
+- [✓] Query `Attachable`
+- [✓] Authenticate request
+> Build Book tracking:
+> - 3A COMPLETE
+> - Phase 3 = 1/5
+> - Next = 3B
 
 ### 3B — Pagination [ ]
 - [ ] Handle 1000-record limit
