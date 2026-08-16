@@ -15,4 +15,4 @@ export async function GET(request: Request) {
     console.error('Attachables endpoint error:', e);
     return NextResponse.json({ error: e.message }, { status: 500 });
   }
-}
+};
