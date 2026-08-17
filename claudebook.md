@@ -16,9 +16,9 @@ Living execution/status tracker for the AuditReady Build Checklist.
 ## CURRENT POSITION
 
 **Current phase:** Phase 3 — Pull Attachments via Attachable API  
-**Current sub‑phase:** 3C — Attachable normalization
+**Current sub‑phase:** 3D — Edge cases  
 **Last verified milestone:** Phase 2 — Pull Transactions (4/4)  
-**Next milestone:** Begin Phase 3A implementation.
+**Next milestone:** Begin Phase 3E implementation.
 
 ---
 
@@ -48,7 +48,7 @@ Living execution/status tracker for the AuditReady Build Checklist.
 - Phase 0 — Developer Environment: 2/3
 - Phase 1 — QBO OAuth Connection: 3/3
 **Phase 2 — Pull Transactions:** 4/4
-**Phase 3 — Pull Attachments via Attachable API: 3/5**
+**Phase 3 — Pull Attachments via Attachable API:** 4/5
 - Phase 4 — The Mapping Join: 0/4
 - Phase 5 — Download Attachment Files: 0/5
 - Phase 6 — Generate CSV Outputs: 0/4
@@ -196,10 +196,11 @@ Living execution/status tracker for the AuditReady Build Checklist.
   - [✓] Derive entity ID from `AttachableRef[0].EntityRef.value`
   - **Verified against real Sandbox records (3 attachments).**
 
-### 3D — Edge cases [ ]
-- [ ] Flag no-reference attachments as orphaned
-- [ ] Handle multiple references
-- [ ] Create one mapping row per reference
+### 3D — Edge cases [✓]
+ - [✓] Flag no-reference attachments as orphaned
+ - [✓] Handle multiple references
+ - [✓] Create one mapping row per reference
+ - Verification performed with deterministic unit‑level tests; real sandbox does not contain orphaned or multi‑reference attachables, so full QBO verification deferred.
 
 ### 3E — Sandbox verification [ ]
 - [ ] Inspect parsed array

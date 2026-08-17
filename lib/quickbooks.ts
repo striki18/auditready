@@ -471,15 +471,37 @@ export function normalizeAttachables(raw: any): any[] {
     attachables = attachables ? [attachables] : [];
   }
 
-  return attachables.map((a: any) => {
-    const ref = a?.AttachableRef?.[0]?.EntityRef ?? {};
-    return {
-      attachableId: a?.Id ?? null,
-      fileName: a?.FileName ?? null,
-      fileSize: a?.Size ?? null,
-      downloadUrl: a?.TempDownloadUrl ?? null,
-      entityType: ref?.type ?? null,
-      entityId: ref?.value ?? null,
-    };
-  });
+  // Phase 3D – produce one row per AttachableRef. If none exist, flag as orphaned.
+  const normalized: any[] = [];
+  for (const a of attachables) {
+    const refs = a?.AttachableRef ?? [];
+    // If there are no references, create a single orphaned entry.
+    if (!Array.isArray(refs) || refs.length === 0) {
+      normalized.push({
+        attachableId: a?.Id ?? null,
+        fileName: a?.FileName ?? null,
+        fileSize: a?.Size ?? null,
+        downloadUrl: a?.TempDownloadUrl ?? null,
+        entityType: null,
+        entityId: null,
+        orphaned: true,
+      });
+      continue;
+    }
+
+    // For each reference, create a mapping row.
+    for (const refEntry of refs) {
+      const entityRef = refEntry?.EntityRef ?? {};
+      normalized.push({
+        attachableId: a?.Id ?? null,
+        fileName: a?.FileName ?? null,
+        fileSize: a?.Size ?? null,
+        downloadUrl: a?.TempDownloadUrl ?? null,
+        entityType: entityRef?.type ?? null,
+        entityId: entityRef?.value ?? null,
+        orphaned: false,
+      });
+    }
+  }
+  return normalized;
 }
