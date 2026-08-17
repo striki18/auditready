@@ -169,7 +169,7 @@ Living execution/status tracker for the AuditReady Build Checklist.
  **Gate:** PASSED – `getTransactions('2023-01-01', '2023-12-31')` returned a clean sandbox transaction array.
 
 ## PHASE 3 — Pull Attachments via Attachable API
-**Status: [✓] COMPLETE — 1/5**
+**Status: [~] IMPLEMENTED / NOT VERIFIED — 2/5**
 
 ### 3A — Attachable retrieval [✓]
 - [✓] Write `getAttachables()`
@@ -180,10 +180,10 @@ Living execution/status tracker for the AuditReady Build Checklist.
 > - Phase 3 = 1/5
 > - Next = 3B
 
-### 3B — Pagination [ ]
-- [ ] Handle 1000-record limit
-- [ ] Implement `STARTPOSITION`
-- [ ] Retrieve all pages
+### 3B — Pagination [~]
+ - [~] Handle 1000-record limit
+ - [~] Implement `STARTPOSITION`
+ - [~] Retrieve all pages (verified to the extent data exists; sandbox contains no attachables, so multiple pages could not be demonstrated)
 
 ### 3C — Attachable normalization [ ]
 - [ ] `attachableId`

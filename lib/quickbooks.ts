@@ -292,6 +292,21 @@ export async function getTransactions(startDate: string, endDate: string) {
  * Errors are thrown for non‑OK HTTP responses so that the verification step can
  * detect a failure and retry if necessary.
  */
+/**
+ * Phase 3B – Retrieve **all** Attachable records handling QuickBooks pagination.
+ *
+ * QuickBooks limits a single query response to 1000 records. The API supports the
+ * `STARTPOSITION` and `MAXRESULTS` (or `maxresults`) query modifiers to page
+ * through larger result sets. This implementation:
+ *   1. Requests records in batches of 1000 using `STARTPOSITION` and `MAXRESULTS`.
+ *   2. Continues fetching subsequent pages until a page returns fewer than the
+ *      batch size, indicating the final page.
+ *   3. Aggregates all `Attachable` objects into a single array and returns a
+ *      simplified payload `{ attachables: [...] }` for downstream consumers.
+ *
+ * The function retains the existing authentication flow (`getAccessToken` and
+ * `getStoredToken`). No other parts of Phase 3A are altered.
+ */
 export async function getAttachables() {
   // 1. Authenticate
   const accessToken = await getAccessToken();
@@ -300,28 +315,55 @@ export async function getAttachables() {
   const realmId = stored?.realm_id || process.env.INTUIT_REALM_ID;
   if (!realmId) throw new Error('Realm ID not available');
 
-  // 3. Build query URL – using the sandbox domain (same as other Phase‑2 calls).
+  // 3. Pagination constants – QuickBooks caps at 1000 records per request.
+  const PAGE_SIZE = 1000;
+  let startPosition = 1; // QuickBooks uses 1‑based indexing.
   const sandboxDomain = 'https://sandbox-quickbooks.api.intuit.com';
-  const query = 'SELECT * FROM Attachable';
-  const url = `${sandboxDomain}/v3/company/${realmId}/query?query=${encodeURIComponent(query)}`;
-  console.log('🔍 Attachable query request URL:', url);
+  const baseQuery = 'SELECT * FROM Attachable';
+  const allAttachables: any[] = [];
 
-  const res = await fetch(url, {
-    method: 'GET',
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      Accept: 'application/json',
-    },
-  });
-  console.log('🔍 Attachable query response status:', res.status);
-  if (!res.ok) {
-    const errBody = await res.text();
-    console.error('Failed to fetch Attachable query:', res.status, errBody);
-    throw new Error('Failed to fetch Attachable query');
+  while (true) {
+    // Build a paginated query string.
+    const paginatedQuery = `${baseQuery} STARTPOSITION ${startPosition} MAXRESULTS ${PAGE_SIZE}`;
+    const url = `${sandboxDomain}/v3/company/${realmId}/query?query=${encodeURIComponent(paginatedQuery)}`;
+    console.log('🔍 Attachable paginated query URL:', url);
+
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        Accept: 'application/json',
+      },
+    });
+    console.log('🔍 Attachable query response status:', res.status);
+    if (!res.ok) {
+      const errBody = await res.text();
+      console.error('Failed to fetch Attachable query:', res.status, errBody);
+      throw new Error('Failed to fetch Attachable query');
+    }
+
+    const raw = await res.json();
+    // QuickBooks may nest the results under `QueryResponse.Attachable` or directly
+    // under `Attachable`. Normalise to an array.
+    const batch = raw?.QueryResponse?.Attachable ?? raw?.Attachable ?? [];
+    if (Array.isArray(batch)) {
+      allAttachables.push(...batch);
+    } else if (batch) {
+      // Single object case – still push to the collection.
+      allAttachables.push(batch);
+    }
+
+    // If the batch size is less than the page size, we have reached the final page.
+    if (!Array.isArray(batch) || batch.length < PAGE_SIZE) {
+      break;
+    }
+    // Advance to the next page.
+    startPosition += PAGE_SIZE;
   }
-  const raw = await res.json();
-  console.log('🔍 Attachable query raw response received');
-  return raw;
+
+  console.log('🔍 Total attachables retrieved:', allAttachables.length);
+  // Return a simple wrapper to keep the API stable for callers expecting JSON.
+  return { attachables: allAttachables };
 }
 
 /**
