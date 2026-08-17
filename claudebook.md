@@ -16,7 +16,7 @@ Living execution/status tracker for the AuditReady Build Checklist.
 ## CURRENT POSITION
 
 **Current phase:** Phase 3 — Pull Attachments via Attachable API  
-**Current sub‑phase:** 3A — Attachable retrieval  
+**Current sub‑phase:** 3C — Attachable normalization
 **Last verified milestone:** Phase 2 — Pull Transactions (4/4)  
 **Next milestone:** Begin Phase 3A implementation.
 
@@ -40,7 +40,7 @@ Living execution/status tracker for the AuditReady Build Checklist.
 
 **Current status**
  - Current phase: Phase 3 — Pull Attachments via Attachable API
- - Current sub‑phase: 3A — Attachable retrieval
+**Current sub‑phase:** 3C — Attachable normalization
  - Last verified milestone: Phase 2 — Pull Transactions (4/4)
  - Next milestone: Begin Phase 3A implementation.
 
@@ -48,7 +48,7 @@ Living execution/status tracker for the AuditReady Build Checklist.
 - Phase 0 — Developer Environment: 2/3
 - Phase 1 — QBO OAuth Connection: 3/3
 **Phase 2 — Pull Transactions:** 4/4
-- Phase 3 — Pull Attachments via Attachable API: 0/5
+**Phase 3 — Pull Attachments via Attachable API: 3/5**
 - Phase 4 — The Mapping Join: 0/4
 - Phase 5 — Download Attachment Files: 0/5
 - Phase 6 — Generate CSV Outputs: 0/4
@@ -176,24 +176,25 @@ Living execution/status tracker for the AuditReady Build Checklist.
 - [✓] Query `Attachable`
 - [✓] Authenticate request
 > Build Book tracking:
-> - 3A COMPLETE
-> - Phase 3 = 1/5
-> - Next = 3B
+> 3A COMPLETE
+> Phase 3 = 3/5
+> Next = 3D
 
 ### 3B — Pagination [~]
  - [~] Handle 1000-record limit
  - [~] Implement `STARTPOSITION`
  - [~] Retrieve all pages (verified to the extent data exists; sandbox contains no attachables, so multiple pages could not be demonstrated)
 
-### 3C — Attachable normalization [ ]
-- [ ] `attachableId`
-- [ ] `fileName`
-- [ ] `fileSize`
-- [ ] `downloadUrl`
-- [ ] `entityType`
-- [ ] `entityId`
-- [ ] Derive entity type from `AttachableRef[0].EntityRef.type`
-- [ ] Derive entity ID from `AttachableRef[0].EntityRef.value`
+### 3C — Attachable normalization [✓]
+  - [✓] `attachableId`
+  - [✓] `fileName`
+  - [✓] `fileSize`
+  - [✓] `downloadUrl`
+  - [✓] `entityType`
+  - [✓] `entityId`
+  - [✓] Derive entity type from `AttachableRef[0].EntityRef.type`
+  - [✓] Derive entity ID from `AttachableRef[0].EntityRef.value`
+  - **Verified against real Sandbox records (3 attachments).**
 
 ### 3D — Edge cases [ ]
 - [ ] Flag no-reference attachments as orphaned

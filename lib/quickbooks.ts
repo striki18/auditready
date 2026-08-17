@@ -426,3 +426,60 @@ export function normalizeTransactionList(report: any) {
   });
   return normalized;
 }
+
+/**
+ * Phase 3C – Normalize Attachable records.
+ *
+ * The QuickBooks `Attachable` object contains many fields, but the build book
+ * requires a flattened shape with the following properties:
+ *   - attachableId: the QuickBooks Attachable Id
+ *   - fileName: original file name
+ *   - fileSize: size in bytes (may be undefined)
+ *   - downloadUrl: temporary download URL (`TempDownloadUrl`)
+ *   - entityType: the type of the linked entity (e.g., "Invoice")
+ *   - entityId: the identifier of the linked entity
+ *
+ * The entity mapping is derived from the first element of the `AttachableRef`
+ * array (`AttachableRef[0].EntityRef`). If the reference array is missing or the
+ * fields are undefined, the corresponding output fields are set to `null`.
+ */
+export function normalizeAttachables(raw: any): any[] {
+  // The source data can be in one of three shapes:
+  // 1. The original QuickBooks response where attachables are nested under
+  //    `QueryResponse.Attachable` or directly under `Attachable`.
+  // 2. The wrapper returned by `getAttachables()` – an object with an
+  //    `attachables` property containing the array.
+  // 3. Directly an array (e.g., when a caller passes `raw?.attachables` as we
+  //    did in the route before fixing this function).
+  // Support all three without altering existing callers.
+
+  let attachables: any[] = [];
+
+  if (Array.isArray(raw)) {
+    // Case 3 – raw is already the array.
+    attachables = raw;
+  } else if (raw && Array.isArray(raw.attachables)) {
+    // Case 2 – wrapper object from getAttachables().
+    attachables = raw.attachables;
+  } else {
+    // Case 1 – original QuickBooks shape.
+    attachables = raw?.QueryResponse?.Attachable ?? raw?.Attachable ?? [];
+  }
+
+  // Ensure we always work with an array.
+  if (!Array.isArray(attachables)) {
+    attachables = attachables ? [attachables] : [];
+  }
+
+  return attachables.map((a: any) => {
+    const ref = a?.AttachableRef?.[0]?.EntityRef ?? {};
+    return {
+      attachableId: a?.Id ?? null,
+      fileName: a?.FileName ?? null,
+      fileSize: a?.Size ?? null,
+      downloadUrl: a?.TempDownloadUrl ?? null,
+      entityType: ref?.type ?? null,
+      entityId: ref?.value ?? null,
+    };
+  });
+}
