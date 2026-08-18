@@ -23,16 +23,35 @@ export function buildEvidenceRegister(
   transactions: any[],
   attachables: any[]
 ): any[] {
-  // Index attachables by entity type + entity id for quick lookup.
+  // ---------------------------------------------------------------------
+  // Phase 4B – Matching logic
+  // ---------------------------------------------------------------------
+  // 1️⃣ Index non‑orphaned attachables by their entity reference so we can
+  //    efficiently join them to transactions (entityType + entityId).
+  // 2️⃣ Preserve all required transaction fields.
+  // 3️⃣ Preserve all attachment fields produced by Phase 3C.
+  // 4️⃣ Include a deterministic `hasAttachment` flag (true for matched rows).
+  // 5️⃣ Ensure orphaned attachments are not lost – they are added after the
+  //    transaction loop with null transaction fields.
+  // 6️⃣ Support multiple attachments per transaction by emitting a row for each.
+  // ---------------------------------------------------------------------
+
   const attachMap: Record<string, any[]> = {};
+  const orphaned: any[] = [];
+
   for (const a of attachables) {
-    if (a.orphaned) continue; // ignore orphaned records for the register
+    if (a.orphaned) {
+      // Collect orphaned records to be added later.
+      orphaned.push(a);
+      continue;
+    }
     const key = `${a.entityType ?? ''}:${a.entityId ?? ''}`;
     if (!attachMap[key]) attachMap[key] = [];
     attachMap[key].push(a);
   }
 
   const register: any[] = [];
+
   for (const txn of transactions) {
     const key = `${txn.txnType ?? ''}:${txn.txnId ?? ''}`;
     const related = attachMap[key] ?? [];
@@ -55,8 +74,56 @@ export function buildEvidenceRegister(
         entityType: att.entityType,
         entityId: att.entityId,
         orphaned: att.orphaned,
+        hasAttachment: true,
       });
     }
   }
+
+  // Append orphaned attachments (no matching transaction). Transaction fields
+  // are left null/undefined to indicate the lack of a parent transaction.
+  for (const att of orphaned) {
+    register.push({
+      txnId: null,
+      txnType: null,
+      date: null,
+      vendor: null,
+      amount: null,
+      docNumber: null,
+      attachableId: att.attachableId,
+      fileName: att.fileName,
+      fileSize: att.fileSize,
+      downloadUrl: att.downloadUrl,
+      entityType: att.entityType,
+      entityId: att.entityId,
+      orphaned: true,
+      hasAttachment: true,
+    });
+  }
+
+  // Ensure deterministic ordering: first by transaction date, then by txnId,
+  // and finally by attachableId. Orphaned rows (no txnId) will appear after
+  // all matched rows.
+  register.sort((a, b) => {
+    // Compare dates (null dates are treated as greater).
+    if (a.date && b.date) {
+      const diff = a.date.localeCompare(b.date);
+      if (diff !== 0) return diff;
+    } else if (a.date) return -1;
+    else if (b.date) return 1;
+
+    // Compare txnId (nulls last).
+    if (a.txnId && b.txnId) {
+      const diff = a.txnId.localeCompare(b.txnId);
+      if (diff !== 0) return diff;
+    } else if (a.txnId) return -1;
+    else if (b.txnId) return 1;
+
+    // Finally compare attachableId to guarantee stable order.
+    if (a.attachableId && b.attachableId) {
+      return a.attachableId.localeCompare(b.attachableId);
+    }
+    return 0;
+  });
+
   return register;
 }
