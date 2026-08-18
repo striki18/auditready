@@ -16,9 +16,9 @@ Living execution/status tracker for the AuditReady Build Checklist.
 ## CURRENT POSITION
 
 **Current phase:** Phase 3 — Pull Attachments via Attachable API  
-**Current sub‑phase:** 3D — Edge cases  
-**Last verified milestone:** Phase 2 — Pull Transactions (4/4)  
-**Next milestone:** Begin Phase 3E implementation.
+**Current sub‑phase:** 4A — Evidence register
+**Last verified milestone:** Phase 3 — Pull Attachments via Attachable API (5/5)
+**Next milestone:** Begin Phase 4 implementation.
 
 ---
 
@@ -48,7 +48,7 @@ Living execution/status tracker for the AuditReady Build Checklist.
 - Phase 0 — Developer Environment: 2/3
 - Phase 1 — QBO OAuth Connection: 3/3
 **Phase 2 — Pull Transactions:** 4/4
-**Phase 3 — Pull Attachments via Attachable API:** 4/5
+**Phase 3 — Pull Attachments via Attachable API:** 5/5
 - Phase 4 — The Mapping Join: 0/4
 - Phase 5 — Download Attachment Files: 0/5
 - Phase 6 — Generate CSV Outputs: 0/4
@@ -169,7 +169,7 @@ Living execution/status tracker for the AuditReady Build Checklist.
  **Gate:** PASSED – `getTransactions('2023-01-01', '2023-12-31')` returned a clean sandbox transaction array.
 
 ## PHASE 3 — Pull Attachments via Attachable API
-**Status: [~] IMPLEMENTED / NOT VERIFIED — 2/5**
+**Status: [✓] COMPLETE — 5/5**
 
 ### 3A — Attachable retrieval [✓]
 - [✓] Write `getAttachables()`
@@ -202,13 +202,20 @@ Living execution/status tracker for the AuditReady Build Checklist.
  - [✓] Create one mapping row per reference
  - Verification performed with deterministic unit‑level tests; real sandbox does not contain orphaned or multi‑reference attachables, so full QBO verification deferred.
 
-### 3E — Sandbox verification [ ]
-- [ ] Inspect parsed array
-- [ ] Confirm sandbox attachments
-- [ ] Confirm entity mappings
-- [ ] Confirm orphan handling
+### 3E — Sandbox verification [✓]
+ - [x] Start production server
+ - [x] Call /api/quickbooks/attachables
+ - [x] Verify HTTP 200
+ - [x] Inspect parsed normalized array
+ - [x] Confirm 3 real Sandbox attachments (non‑orphaned)
+ - [x] Confirm fields attachableId, fileName, fileSize, downloadUrl, entityType, entityId
+ - [x] Confirm Invoice entity mappings for those attachments
+ - [x] Verify orphan handling via deterministic test (sandbox contains no orphaned records)
+ - [x] Verify multiple‑reference handling via deterministic test (sandbox contains no multi‑reference records)
+ - [x] Run npm run build
 
 **Gate:** Every attachment is returned with linked transaction type/ID; orphaned attachments are separate.
+**Verification notes:** Orphan handling and multiple‑reference handling were verified via deterministic unit tests because the sandbox currently contains no orphaned or multi‑reference attachable records.
 
 ---
 
