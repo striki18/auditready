@@ -220,7 +220,7 @@ Living execution/status tracker for the AuditReady Build Checklist.
 ---
 
 # PHASE 4 — The Mapping Join
-**Status: [ ] NOT STARTED — 0/4**
+**Status: [~] IN PROGRESS — 3/4**
 
 ### 4A — Evidence register [✓] COMPLETE
 - [✓] Write `buildEvidenceRegister(transactions, attachables)`
@@ -244,13 +244,13 @@ Living execution/status tracker for the AuditReady Build Checklist.
 - [✓] Include download URL
 - [✓] `hasAttachment: true`
 
-### 4C — Missing evidence [ ]
-- [ ] Add transactions without attachment
-- [ ] `hasAttachment: false`
-- [ ] `fileName: null`
-- [ ] Sort by date
-- [ ] Create `matched[]`
-- [ ] Create `missing[]`
+### 4C — Missing evidence [✓]
+ - [✓] Add transactions without attachment
+ - [✓] `hasAttachment: false`
+ - [✓] `fileName: null`
+ - [✓] Sort by date
+ - [✓] Create `matched[]`
+ - [✓] Create `missing[]`
 
 ### 4D — Verification [ ]
 - [ ] Log matched/missing

@@ -56,7 +56,23 @@ export function buildEvidenceRegister(
     const key = `${txn.txnType ?? ''}:${txn.txnId ?? ''}`;
     const related = attachMap[key] ?? [];
     if (related.length === 0) {
-      // No attachment – Phase 4C will handle missing entries.
+      // Phase 4C – transaction with no attachment. Emit a row with null attachment fields.
+      register.push({
+        txnId: txn.txnId,
+        txnType: txn.txnType,
+        date: txn.date,
+        vendor: txn.vendor,
+        amount: txn.amount,
+        docNumber: txn.docNumber,
+        attachableId: null,
+        fileName: null,
+        fileSize: null,
+        downloadUrl: null,
+        entityType: null,
+        entityId: null,
+        orphaned: false,
+        hasAttachment: false,
+      });
       continue;
     }
     for (const att of related) {
