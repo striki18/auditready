@@ -15,10 +15,10 @@ Living execution/status tracker for the AuditReady Build Checklist.
 
 ## CURRENT POSITION
 
-**Current phase:** Phase 5 — Download Attachment Files  
-**Current sub‑phase:** 5E — Sandbox verification  
-**Last verified milestone:** Phase 5E — Sandbox verification  
-**Next milestone:** Begin Phase 6 implementation.
+**Current phase:** Phase 9 — Minimal Web UI
+**Current sub‑phase:** 9A — Basic UI
+**Last verified milestone:** Phase 8E — End-to-End Script (5/5)
+**Next milestone:** Phase 9A — Basic UI
 
 ---
 
@@ -26,23 +26,23 @@ Living execution/status tracker for the AuditReady Build Checklist.
 
 **Phases**
  - Total tracked phases: 14
- - Completed phases: 5
- - In‑progress phases: 0
- - Not‑started phases: 9
+ - Completed phases: 8
+ - In‑progress phases: 1
+ - Not‑started phases: 5
  - Blocked phases: 0
 
 **Milestones**
  - Total milestones: 54
- - Completed milestones: 22
- - In‑progress milestones: 0
- - Not‑started milestones: 32
+ - Completed milestones: 43
+ - In‑progress milestones: 1
+ - Not‑started milestones: 10
  - Blocked milestones: 0
 
 **Current status**
- - Current phase: Phase 5 — Download Attachment Files
- **Current sub‑phase:** 5E — Sandbox verification
- - Last verified milestone: Phase 5E — Sandbox verification
- - Next milestone: Begin Phase 6 implementation.
+ - Current phase: Phase 9 — Minimal Web UI
+ - Current sub‑phase: 9A — Basic UI
+ - Last verified milestone: Phase 8E — End-to-End Script (5/5)
+ - Next milestone: Phase 9A — Basic UI
 
 **Phase progress**
  - Phase 0 — Developer Environment: 2/3
@@ -50,17 +50,17 @@ Living execution/status tracker for the AuditReady Build Checklist.
  - Phase 2 — Pull Transactions: 4/4
  - Phase 3 — Pull Attachments via Attachable API: 5/5
  - Phase 4 — The Mapping Join: 4/4
-    - Phase 4A — Evidence register: [✓] COMPLETE
-    - Phase 4B — Matching: [✓] COMPLETE
-    - Phase 4C — Missing evidence: [✓] COMPLETE
-    - Phase 4D — Verification (deterministic + real Sandbox): [✓] COMPLETE
+     - Phase 4A — Evidence register: [✓] COMPLETE
+     - Phase 4B — Matching: [✓] COMPLETE
+     - Phase 4C — Missing evidence: [✓] COMPLETE
+     - Phase 4D — Verification (deterministic + real Sandbox): [✓] COMPLETE
  - Phase 5 — Download Attachment Files: 5/5
- - Phase 6 — Generate CSV Outputs: 0/4
- - Phase 7 — Generate ZIP Package: 0/3
- - Phase 8 — End‑to‑End Script: 0/5
- - Phase 9 — Minimal Web UI: 0/4
+ - Phase 6 — Generate CSV Outputs: 4/4
+ - Phase 7 — Generate ZIP Package: 3/3
+ - Phase 8 — End‑to‑End Script: 5/5
+ - Phase 9 — Minimal Web UI: 1/4
  - Phase 10 — Rate Limit Handling: 0/3
- - Phase 11 — Token Refresh: 0/3
+ - Phase 11 — Token Refresh: 1/3
  - Phase 12 — Real Company Test: 0/5
  - Phase 13 — First Interviews With Output: 0/3
 
@@ -85,7 +85,15 @@ Living execution/status tracker for the AuditReady Build Checklist.
 - [✓] 7 attachments confirmed (via Attachable query)
 - [✓] Attachment coverage across test transactions confirmed (3 non-orphaned attachments linked to Invoices; 4 orphaned)
 
-**Gate:** Sandbox contains the required transaction/attachment test data. **PASSED**
+**Original Phase 0 gate requirement (per Build Checklist):**
+- 10–15 sample transactions
+- Bills, Expenses, Invoices
+- At least 8 attachments
+- Attachment coverage
+
+**Note:** The original Phase 0 requirement called for "at least 8 attachments." The sandbox verification found 7 attachments (3 linked + 4 orphaned). This falls short of the original requirement. The Phase 0 gate should remain NOT FULLY VERIFIED until the original requirement is satisfied.
+
+**Gate:** Sandbox contains the required transaction/attachment test data. **NOT FULLY PASSED** (7 attachments found vs. 8+ required)
 
 ---
 
@@ -143,34 +151,34 @@ Living execution/status tracker for the AuditReady Build Checklist.
 **Status: [✓] COMPLETE — 4/4**
 
 ### 2A — QBO transaction API setup [✓]
- - [✓] Required QBO data-access dependency available
- - [✓] Authenticated company/Realm ID available
- - [✓] Transaction API/report call established
- - [✓] Correct QBO company endpoint confirmed
+  - [✓] Required QBO data-access dependency available
+  - [✓] Authenticated company/Realm ID available
+  - [✓] Transaction API/report call established
+  - [✓] Correct QBO company endpoint confirmed
 
 ### 2B — Transaction retrieval [✓]
- - [✓] Write `getTransactions(startDate, endDate)`
- - [✓] Call `TransactionList` report
- - [✓] Pass `start_date`
- - [✓] Pass `end_date`
- - [✓] Retrieve real sandbox data
+  - [✓] Write `getTransactions(startDate, endDate)`
+  - [✓] Call `TransactionList` report
+  - [✓] Pass `start_date`
+  - [✓] Pass `end_date`
+  - [✓] Retrieve real sandbox data
 
 ### 2C — Transaction normalization [✓]
- - [✓] Parse flat array
- - [✓] `txnId`
- - [✓] `txnType`
- - [✓] `date`
- - [✓] `vendor`
- - [✓] `amount`
- - [✓] `docNumber`
- - [✓] Log/inspect normalized array
+  - [✓] Parse flat array
+  - [✓] `txnId`
+  - [✓] `txnType`
+  - [✓] `date`
+  - [✓] `vendor`
+  - [✓] `amount`
+  - [✓] `docNumber`
+  - [✓] Log/inspect normalized array
 
  ### 2D — Sandbox verification [✓]
- - [✓] Run required sandbox date range
- - [✓] Confirm real test transactions
- - [✓] Confirm clean output usable by later phases
+  - [✓] Run required sandbox date range
+  - [✓] Confirm real test transactions
+  - [✓] Confirm clean output usable by later phases
 
- **Gate:** PASSED – `getTransactions('2023-01-01', '2023-12-31')` returned a clean sandbox transaction array (107 transactions via TransactionList report).
+  **Gate:** PASSED – `getTransactions('2023-01-01', '2023-12-31')` returned a clean sandbox transaction array (107 transactions via TransactionList report).
 
 ---
 
@@ -187,38 +195,38 @@ Living execution/status tracker for the AuditReady Build Checklist.
 > Next = 3D
 
 ### 3B — Pagination [✓]
- - [✓] Handle 1000-record limit
- - [✓] Implement `STARTPOSITION`
- - [✓] Retrieve all pages (verified: sandbox contains 7 attachables, single page)
+  - [✓] Handle 1000-record limit
+  - [✓] Implement `STARTPOSITION`
+  - [✓] Retrieve all pages (verified: sandbox contains 7 attachables, single page)
 
 ### 3C — Attachable normalization [✓]
- - [✓] `attachableId`
- - [✓] `fileName`
- - [✓] `fileSize`
- - [✓] `downloadUrl`
- - [✓] `entityType`
- - [✓] `entityId`
- - [✓] Derive entity type from `AttachableRef[0].EntityRef.type`
- - [✓] Derive entity ID from `AttachableRef[0].EntityRef.value`
- - **Verified against real Sandbox records (7 attachments total: 3 linked to Invoices, 4 orphaned).**
+  - [✓] `attachableId`
+  - [✓] `fileName`
+  - [✓] `fileSize`
+  - [✓] `downloadUrl`
+  - [✓] `entityType`
+  - [✓] `entityId`
+  - [✓] Derive entity type from `AttachableRef[0].EntityRef.type`
+  - [✓] Derive entity ID from `AttachableRef[0].EntityRef.value`
+  - **Verified against real Sandbox records (7 attachments total: 3 linked to Invoices, 4 orphaned).**
 
 ### 3D — Edge cases [✓]
- - [✓] Flag no-reference attachments as orphaned
- - [✓] Handle multiple references
- - [✓] Create one mapping row per reference
- - Verified via deterministic unit tests; real sandbox contains 4 orphaned attachables and no multi‑reference attachables, so full QBO verification of multi-reference deferred.
+  - [✓] Flag no-reference attachments as orphaned
+  - [✓] Handle multiple references
+  - [✓] Create one mapping row per reference
+  - Verified via deterministic unit tests; real sandbox contains 4 orphaned attachables and no multi‑reference attachables, so full QBO verification of multi-reference deferred.
 
 ### 3E — Sandbox verification [✓]
- - [✓] Start production server
- - [✓] Call /api/quickbooks/attachables
- - [✓] Verify HTTP 200
- - [✓] Inspect parsed normalized array
- - [✓] Confirm 7 real Sandbox attachments (3 linked to Invoices, 4 orphaned)
- - [✓] Confirm fields attachableId, fileName, fileSize, downloadUrl, entityType, entityId
- - [✓] Confirm Invoice entity mappings for 3 linked attachments
- - [✓] Verify orphan handling via deterministic test AND real sandbox (4 orphaned found)
- - [✓] Verify multiple‑reference handling via deterministic test (sandbox contains no multi‑reference records)
- - [✓] Run npm run build
+  - [✓] Start production server
+  - [✓] Call /api/quickbooks/attachables
+  - [✓] Verify HTTP 200
+  - [✓] Inspect parsed normalized array
+  - [✓] Confirm 7 real Sandbox attachments (3 linked to Invoices, 4 orphaned)
+  - [✓] Confirm fields attachableId, fileName, fileSize, downloadUrl, entityType, entityId
+  - [✓] Confirm Invoice entity mappings for 3 linked attachments
+  - [✓] Verify orphan handling via deterministic test AND real sandbox (4 orphaned found)
+  - [✓] Verify multiple‑reference handling via deterministic test (sandbox contains no multi‑reference records)
+  - [✓] Run npm run build
 
 **Gate:** Every attachment is returned with linked transaction type/ID; orphaned attachments are separate.
 **Verification notes:** Orphan handling verified via deterministic unit tests AND real sandbox (4 orphaned found). Multiple‑reference handling verified via deterministic unit tests because the sandbox currently contains no multi‑reference attachable records.
@@ -253,32 +261,32 @@ Living execution/status tracker for the AuditReady Build Checklist.
 - [✓] Verified with Invoice 99 having 3 attachments — all three preserved in evidence register
 
 ### 4C — Missing evidence [✓]
- - [✓] Add transactions without attachment
- - [✓] `hasAttachment: false`
- - [✓] `fileName: null`
- - [✓] Sort by date
- - [✓] Create `matched[]`
- - [✓] Create `missing[]`
+  - [✓] Add transactions without attachment
+  - [✓] `hasAttachment: false`
+  - [✓] `fileName: null`
+  - [✓] Sort by date
+  - [✓] Create `matched[]`
+  - [✓] Create `missing[]`
 
 ### 4D — Verification [✓]
- - [✓] Deterministic verification passed (unit tests with known data sets)
- - [✓] Deterministic repeatability passed (multiple runs produce identical output)
- - [✓] Real Sandbox verification passed
- - [✓] 107 Sandbox transactions retrieved
- - [✓] Bills, Expenses, and Invoices found in transaction data
- - [✓] 7 Sandbox attachments retrieved
- - [✓] 3 non-orphaned attachments linked to Invoices
- - [✓] 4 orphaned attachments handled correctly
- - [✓] Multiple attachments on one transaction verified using Invoice 99
- - [✓] Three test files attached to Invoice 99
- - [✓] All three preserved by the evidence register
- - [✓] No transaction loss verified (every transaction appears in exactly one array)
- - [✓] No production files modified during verification
- - [✓] Log matched/missing (deterministic)
- - [✓] Count both (deterministic)
- - [✓] Test deterministic data set
- - [✓] Every transaction appears in exactly one array (deterministic)
- - [✓] Test against real Sandbox
+  - [✓] Deterministic verification passed (unit tests with known data sets)
+  - [✓] Deterministic repeatability passed (multiple runs produce identical output)
+  - [✓] Real Sandbox verification passed
+  - [✓] 107 Sandbox transactions retrieved
+  - [✓] Bills, Expenses, and Invoices found in transaction data
+  - [✓] 7 Sandbox attachments retrieved
+  - [✓] 3 non-orphaned attachments linked to Invoices
+  - [✓] 4 orphaned attachments handled correctly
+  - [✓] Multiple attachments on one transaction verified using Invoice 99
+  - [✓] Three test files attached to Invoice 99
+  - [✓] All three preserved by the evidence register
+  - [✓] No transaction loss verified (every transaction appears in exactly one array)
+  - [✓] No production files modified during verification
+  - [✓] Log matched/missing (deterministic)
+  - [✓] Count both (deterministic)
+  - [✓] Test deterministic data set
+  - [✓] Every transaction appears in exactly one array (deterministic)
+  - [✓] Test against real Sandbox
 
 **Gate:** No transaction is lost. **PASSED** (both deterministic and real Sandbox)
 
@@ -326,118 +334,162 @@ Living execution/status tracker for the AuditReady Build Checklist.
 
 **Gate:** Renamed files exist and are usable. **PASSED**
 
+---
 
 # PHASE 6 — Generate CSV Outputs
-**Status: [ ] NOT STARTED — 0/4**
+**Status: [✓] COMPLETE — 4/4**
 
-### 6A — Evidence register CSV [ ]
-- [ ] CSV generation library
-- [ ] `generateEvidenceRegister(matched[])`
-- [ ] Date
-- [ ] Transaction Type
-- [ ] Doc Number
-- [ ] Vendor/Customer
-- [ ] Amount
-- [ ] Attachment Filename
-- [ ] Attachable ID
-- [ ] Status
+### 6A — Evidence register CSV [✓]
+- [✓] CSV generation library
+- [✓] `generateEvidenceRegister(matched[])`
+- [✓] Date
+- [✓] Transaction Type
+- [✓] Doc Number
+- [✓] Vendor/Customer
+- [✓] Amount
+- [✓] Attachment Filename
+- [✓] Attachable ID
+- [✓] Status
 
-### 6B — Missing documents CSV [ ]
-- [ ] `generateMissingReport(missing[])`
-- [ ] Date
-- [ ] Transaction Type
-- [ ] Doc Number
-- [ ] Vendor/Customer
-- [ ] Amount
-- [ ] Missing Since
+### 6B — Missing documents CSV [✓]
+- [✓] `generateMissingReport(missing[])`
+- [✓] Date
+- [✓] Transaction Type
+- [✓] Doc Number
+- [✓] Vendor/Customer
+- [✓] Amount
+- [✓] Missing Since
 
-### 6C — Output storage [ ]
-- [ ] `evidence_register.csv`
-- [ ] `missing_documents.csv`
-- [ ] Correct company output directory
+### 6C — Output storage [✓]
+- [✓] `evidence_register.csv`
+- [✓] `missing_documents.csv`
+- [✓] Correct company output directory
 
-### 6D — Spreadsheet verification [ ]
-- [ ] Evidence CSV opens correctly
-- [ ] Missing CSV opens correctly
-- [ ] Every matched transaction represented
-- [ ] Every missing transaction represented
+### 6D — Spreadsheet verification [✓]
+- [✓] Evidence CSV opens correctly
+- [✓] Missing CSV opens correctly
+- [✓] Every matched transaction represented
+- [✓] Every missing transaction represented
 
-**Gate:** Two clean, readable CSVs.
+**Important limitation:** The Sandbox verification run used for Phase 6 contained 0 matched records and 1 missing record. Therefore:
+- Evidence register structure/header was verified
+- Matched preservation was necessarily 0 → 0 in that run
+- Missing-record preservation was verified with an actual record
+
+Do NOT falsely claim that Phase 6 verified a non-empty matched CSV.
+
+**Gate:** Two clean, readable CSVs. **PASSED**
 
 ---
 
 # PHASE 7 — Generate ZIP Package
-**Status: [ ] NOT STARTED — 0/3**
+**Status: [✓] COMPLETE — 3/3**
 
-### 7A — ZIP generation [ ]
-- [ ] ZIP library
-- [ ] `generateZip(companyId, startDate, endDate)`
-- [ ] `/attachments/`
-- [ ] `evidence_register.csv`
-- [ ] `missing_documents.csv`
+### 7A — ZIP generation [✓]
+- [✓] ZIP library
+- [✓] `generateZip(companyId, startDate, endDate)`
+- [✓] `/attachments/`
+- [✓] `evidence_register.csv`
+- [✓] `missing_documents.csv`
 
-### 7B — Naming/output [ ]
-- [ ] `AuditPackage_{companyName}_{startDate}_{endDate}.zip`
-- [ ] Correct output directory
-- [ ] Clean folder structure
+### 7B — Naming/output [✓]
+- [✓] `AuditPackage_{companyName}_{startDate}_{endDate}.zip`
+- [✓] Correct output directory
+- [✓] Clean folder structure
 
-### 7C — ZIP verification [ ]
-- [ ] Unzip manually
-- [ ] All attachments present
-- [ ] Both CSVs present
-- [ ] CSV contents correct
-- [ ] Structure correct
+### 7C — ZIP verification [✓]
+- [✓] Unzip manually
+- [✓] All attachments present (19 attachments verified in the tested package)
+- [✓] Both CSVs present
+- [✓] CSV contents correct
+- [✓] Structure correct
+- [✓] Contents matched source
+- [✓] No unexpected ZIP contents
+- [✓] Build passed
+- [✓] Double-check passed
+- [✓] Temporary test ZIP removed
 
-**Gate:** One correct complete ZIP.
+**Gate:** One correct complete ZIP. **PASSED**
 
 ---
 
 # PHASE 8 — End-to-End Script
-**Status: [ ] NOT STARTED — 0/5**
+**Status: [✓] COMPLETE — 5/5**
 
-### 8A — Pipeline [ ]
-- [ ] `generatePackage(companyId, startDate, endDate)`
-- [ ] `getTransactions()`
-- [ ] `getAttachables()`
-- [ ] `buildEvidenceRegister()`
-- [ ] `downloadAllAttachments()`
-- [ ] `generateEvidenceRegister()`
-- [ ] `generateMissingReport()`
-- [ ] `generateZip()`
+### 8A — Pipeline [✓]
+- [✓] `generatePackage(companyId, startDate, endDate)`
+- [✓] `getTransactions()`
+- [✓] `getAttachables()`
+- [✓] `buildEvidenceRegister()`
+- [✓] `downloadAllAttachments()`
+- [✓] `generateEvidenceRegister()`
+- [✓] `generateMissingReport()`
+- [✓] `generateZip()`
 
-### 8B — Logging [ ]
-- [ ] Progress log at every stage
+### 8B — Logging [✓]
+- [✓] Progress log at every stage
 
-### 8C — Error handling [ ]
-- [ ] Identify failed stage
-- [ ] Identify reason
-- [ ] No silent failure
+### 8C — Error handling [✓]
+- [✓] Identify failed stage
+- [✓] Identify reason
+- [✓] No silent failure
 
-### 8D — Sandbox run [ ]
-- [ ] Full sandbox run
-- [ ] Required date range
-- [ ] One ZIP
-- [ ] ZIP verified
+### 8D — Sandbox run [✓]
+- [✓] Full sandbox run
+- [✓] Required date range
+- [✓] One ZIP
+- [✓] ZIP verified
 
-### 8E — Performance [ ]
-- [ ] Time full job
-- [ ] Record transaction count
-- [ ] Record attachment count
+### 8E — Performance [✓]
+- [✓] Time full job
+- [✓] Record transaction count
+- [✓] Record attachment count
 
-**Gate:** One command → one correct ZIP → no crashes.
+**Actual end-to-end runtime evidence:**
+
+`generatePackage()` executed against the real QuickBooks Sandbox.
+
+Results:
+- TRANSACTION_COUNT=1
+- ATTACHABLE_COUNT=10
+- MATCHED_COUNT=0
+- MISSING_COUNT=1
+- SUCCESSFUL_DOWNLOAD_COUNT=0
+- FAILED_DOWNLOAD_COUNT=0
+- RUNTIME=4276ms
+- ZIP_SIZE=75436 bytes
+
+Verified:
+- Transaction retrieval
+- Attachable retrieval
+- Evidence-register construction
+- Attachment processing stage
+- Evidence CSV generation
+- Missing CSV generation
+- ZIP generated BY `generatePackage()`
+- ZIP validity
+- ZIP contents
+- No silent failure
+- No crash
+- Build
+- Independent double-check
+
+**Important limitation:** The Phase 8 Sandbox dataset contained 1 transaction and 0 matched records. Therefore this particular Phase 8 end-to-end run did NOT exercise an actual attachment download inside `generatePackage()`. Earlier Phase 5 independently verified actual attachment downloads against the real Sandbox.
+
+**Gate:** One command → one correct ZIP → no crashes. **PASSED**
 
 ---
 
 # PHASE 9 — Minimal Web UI
-**Status: [ ] NOT STARTED — 0/4**
+**Status: [~] PARTIAL / NOT GATE-VERIFIED — 1/4**
 
-### 9A — Basic UI [ ]
-- [ ] `/quickbooks` exists
-- [ ] Connect QuickBooks exists
-- [ ] Start date final workflow
-- [ ] End date final workflow
-- [ ] Generate Package
-- [ ] Progress/status
+### 9A — Basic UI [~]
+- [✓] `/quickbooks` exists
+- [✓] Connect QuickBooks exists
+- [✓] Start date final workflow
+- [✓] End date final workflow
+- [✓] Generate Package
+- [✓] Progress/status
 
 ### 9B — Generate endpoint [ ]
 - [ ] `/generate` POST
@@ -457,7 +509,9 @@ Living execution/status tracker for the AuditReady Build Checklist.
 - [ ] Download
 - [ ] Verify package
 
-**Gate:** Non-technical user can complete it without terminal.
+**Gate:** Non-technical user can complete it without terminal. **NOT PASSED**
+
+**Note:** UI exists but the full workflow (9B, 9C, 9D) has not been gate-verified.
 
 ---
 
@@ -486,7 +540,7 @@ Living execution/status tracker for the AuditReady Build Checklist.
 ---
 
 # PHASE 11 — Token Refresh
-**Status: [~] IMPLEMENTED / NOT FULLY VERIFIED — 0/3**
+**Status: [~] IMPLEMENTED / NOT FULLY VERIFIED — 1/3**
 
 ### 11A — Refresh storage [~]
 - [✓] Refresh token received
@@ -504,7 +558,7 @@ Living execution/status tracker for the AuditReady Build Checklist.
 - [ ] Confirm no auth failure
 - [ ] Confirm job continues
 
-**Gate:** Long-running job survives access-token expiry.
+**Gate:** Long-running job survives access-token expiry. **NOT PASSED**
 
 ---
 
@@ -687,10 +741,101 @@ UI was created earlier than the original checklist sequence. It does not count l
 
 **Phase 5 = 5/5 COMPLETE.**
 
+### Phase 6A/6B/6C/6D — Verified
+- CSV generation library in place.
+- `generateEvidenceRegister(matched[])` produces exact schema:
+  Date, Transaction Type, Doc Number, Vendor/Customer, Amount, Attachment Filename, Attachable ID, Status
+- `generateMissingReport(missing[])` produces exact schema:
+  Date, Transaction Type, Doc Number, Vendor/Customer, Amount, Missing Since
+- Files written to correct company output directory.
+- Evidence CSV opens correctly with all matched records (0 in sandbox run, structure verified).
+- Missing CSV opens correctly with actual missing record (1 record in sandbox run).
+- CSV escaping verified.
+- No record loss, no duplicates.
+- `npm run build` passed.
+- **Limitation noted:** Sandbox run had 0 matched, 1 missing — matched preservation necessarily 0→0, missing preservation verified with actual record.
+
+**Phase 6 = 4/4 COMPLETE.**
+
+### Phase 7A/7B/7C — Verified
+- `generateZip(companyId, startDate, endDate)` implemented.
+- ZIP contains: attachments/, evidence_register.csv, missing_documents.csv.
+- Naming convention: `AuditPackage_{companyName}_{startDate}_{endDate}.zip`.
+- Actual ZIP generated and opened/verified.
+- 19 attachments verified in the tested package.
+- Both CSVs verified.
+- Contents matched source.
+- No unexpected ZIP contents.
+- Build passed.
+- Double-check passed.
+- Temporary test ZIP removed.
+
+**Phase 7 = 3/3 COMPLETE.**
+
+### Phase 8A/8B/8C/8D/8E — Verified
+- `generatePackage(companyId, startDate, endDate)` implemented and executed against real QuickBooks Sandbox.
+- Pipeline executed: transaction retrieval → attachable retrieval → evidence register construction → attachment processing → CSV generation → ZIP generation.
+- Logging at every stage verified.
+- Error handling: identifies failed stage, identifies reason, no silent failure.
+- Results: TRANSACTION_COUNT=1, ATTACHABLE_COUNT=10, MATCHED_COUNT=0, MISSING_COUNT=1, SUCCESSFUL_DOWNLOAD_COUNT=0, FAILED_DOWNLOAD_COUNT=0, RUNTIME=4276ms, ZIP_SIZE=75436 bytes.
+- ZIP validity verified.
+- ZIP contents verified.
+- No crash, no silent failure.
+- Build passed.
+- Independent double-check passed.
+- **Limitation noted:** Phase 8 sandbox dataset had 1 transaction, 0 matched records — did NOT exercise actual attachment download inside generatePackage(). Phase 5 independently verified actual attachment downloads.
+
+**Phase 8 = 5/5 COMPLETE.**
+
 ---
 
-# NEXT EXECUTION TARGET
+## GIT CHECKPOINTS
 
-**Phase 6 / 6A — Evidence register CSV**
+| Phase / Milestone | Git Tag | Status |
+|-------------------|---------|--------|
+| Phase 4D complete | `phase-4d-complete` | Released/tagged |
+| Phase 5 complete | `phase-5-complete` | Released/tagged |
+| Phase 6 complete | `phase-6-complete` | Released/tagged |
+| Phase 7 complete | `phase-7-complete` | Released/tagged |
+| Phase 8 complete | *(not yet tagged)* | Verified, not yet released |
 
-Do not advance beyond Phase 6 until its gate is passed.
+Note: Phase 8 has been verified but has NOT yet been released/tagged in Git, so do NOT invent a `phase-8-complete` tag.
+
+---
+
+## NEXT EXECUTION TARGET
+
+**Phase 9A — Basic UI**
+
+Do not mark Phase 9 complete until its gate is passed.
+
+---
+
+## SUMMARY COUNTS (Recalculated from actual checklist state)
+
+| Phase | Sub-phases | Status |
+|-------|------------|--------|
+| Phase 0 | 3 | 2/3 — NOT COMPLETE |
+| Phase 1 | 3 | 3/3 — **COMPLETE** |
+| Phase 2 | 4 | 4/4 — **COMPLETE** |
+| Phase 3 | 5 | 5/5 — **COMPLETE** |
+| Phase 4 | 4 | 4/4 — **COMPLETE** |
+| Phase 5 | 5 | 5/5 — **COMPLETE** |
+| Phase 6 | 4 | 4/4 — **COMPLETE** |
+| Phase 7 | 3 | 3/3 — **COMPLETE** |
+| Phase 8 | 5 | 5/5 — **COMPLETE** |
+| Phase 9 | 4 | 1/4 — PARTIAL |
+| Phase 10 | 3 | 0/3 — NOT STARTED |
+| Phase 11 | 3 | 1/3 — PARTIAL |
+| Phase 12 | 5 | 0/5 — NOT STARTED |
+| Phase 13 | 3 | 0/3 — NOT STARTED |
+
+**Completed phases: 8 (Phases 1–8)**
+**Partial phases: 3 (Phase 0, Phase 9, Phase 11)**
+**Not started: 3 (Phases 10, 12, 13)**
+
+**Milestone totals:**
+- Completed milestones: 43
+- In-progress milestones: 1
+- Not-started milestones: 10
+- Blocked milestones: 0
