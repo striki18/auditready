@@ -378,13 +378,24 @@ export async function getAttachables() {
  * @param attachableId - The QuickBooks Attachable Id
  * @param fileName - The original file name (used for saving)
  * @param destFolder - The destination folder path
+ * @param failed - Optional array to collect failure details for Phase 5C
  * @returns Object with success status, file path, and any error message
  */
+export interface DownloadFileResult {
+  success: boolean;
+  filePath?: string;
+  error?: string;
+  attachableId?: string;
+  fileName?: string;
+  timestamp?: string;
+}
+
 export async function downloadFile(
   attachableId: string,
   fileName: string,
-  destFolder: string
-): Promise<{ success: boolean; filePath?: string; error?: string }> {
+  destFolder: string,
+  failed?: DownloadFileResult[]
+): Promise<DownloadFileResult> {
   try {
     // 1. Get valid access token (handles refresh automatically)
     const accessToken = await getAccessToken();
@@ -413,7 +424,15 @@ export async function downloadFile(
     if (!res.ok) {
       const errBody = await res.text();
       console.error('Failed to download attachment:', res.status, errBody);
-      return { success: false, error: `Download failed: ${res.status} ${errBody}` };
+      const failure: DownloadFileResult = {
+        success: false,
+        error: `Download failed: ${res.status} ${errBody}`,
+        attachableId,
+        fileName,
+        timestamp: new Date().toISOString(),
+      };
+      if (failed) failed.push(failure);
+      return failure;
     }
 
     // 5. Get the file bytes as ArrayBuffer
@@ -421,7 +440,15 @@ export async function downloadFile(
     const buffer = Buffer.from(arrayBuffer);
 
     if (buffer.length === 0) {
-      return { success: false, error: 'Downloaded file is empty' };
+      const failure: DownloadFileResult = {
+        success: false,
+        error: 'Downloaded file is empty',
+        attachableId,
+        fileName,
+        timestamp: new Date().toISOString(),
+      };
+      if (failed) failed.push(failure);
+      return failure;
     }
 
     // 6. Ensure destination folder exists
@@ -437,11 +464,162 @@ export async function downloadFile(
 
     console.log('🔍 File saved to:', filePath, 'Size:', buffer.length, 'bytes');
 
-    return { success: true, filePath };
+    return { success: true, filePath, timestamp: new Date().toISOString() };
   } catch (e: any) {
     console.error('Download error:', e);
-    return { success: false, error: e.message };
+    const failure: DownloadFileResult = {
+      success: false,
+      error: e.message,
+      attachableId,
+      fileName,
+      timestamp: new Date().toISOString(),
+    };
+    if (failed) failed.push(failure);
+    return failure;
   }
+}
+
+/**
+ * Bulk download all attachments from matched evidence-register records.
+ * 
+ * @param matched - Array of matched evidence-register records (from buildEvidenceRegister)
+ * @param startDate - Start date for the query (used for logging)
+ * @param endDate - End date for the query (used for logging)
+ * @returns Object with successful downloads, failed downloads, and counts
+ * 
+ * Phase 5D: Implements bulk download with failure collection.
+ * - Reuses downloadFile() for each attachment
+ * - Reuses Phase 5B storage and filename behavior
+ * - Continues on individual failures
+ * - Collects failures in failed[] array
+ * - Returns deterministic results
+ */
+export async function downloadAllAttachments(
+  matched: any[],
+  startDate: string,
+  endDate: string
+): Promise<{
+  successful: Array<{
+    attachableId: string;
+    fileName: string;
+    txnType: string;
+    docNumber: string;
+    filePath: string;
+    fileSize: number;
+  }>;
+  failed: Array<{
+    attachableId: string | null;
+    fileName: string;
+    error: string;
+    timestamp: string;
+  }>;
+  totalAttempted: number;
+  successfulCount: number;
+  failedCount: number;
+}> {
+  const fs = await import('fs');
+  const path = await import('path');
+  
+  // Destination folder (project root / attachments) - Phase 5B behavior
+  const destFolder = path.join(process.cwd(), 'attachments');
+  
+  // Ensure destination folder exists
+  if (!fs.existsSync(destFolder)) {
+    fs.mkdirSync(destFolder, { recursive: true });
+  }
+
+  // Sanitize function - Phase 5B behavior
+  const sanitize = (s: string) => s.replace(/[\\/:*?"<>|]/g, '_');
+
+  const successful: Array<{
+    attachableId: string;
+    fileName: string;
+    txnType: string;
+    docNumber: string;
+    filePath: string;
+    fileSize: number;
+  }> = [];
+  
+  const failed: Array<{
+    attachableId: string | null;
+    fileName: string;
+    error: string;
+    timestamp: string;
+  }> = [];
+
+  // Filter to only records with attachments
+  const attachmentsToDownload = matched.filter(m => m.hasAttachment);
+  
+  console.log(`[downloadAllAttachments] Starting bulk download for ${attachmentsToDownload.length} attachments (${startDate} to ${endDate})`);
+
+  for (const record of attachmentsToDownload) {
+    const attachableId = record.attachableId;
+    const originalFileName = record.fileName || 'unknown';
+    const txnType = record.txnType || (record.orphaned ? 'Orphaned' : 'Unknown');
+    const docNumber = record.docNumber || (record.orphaned ? 'N/A' : 'Unknown');
+
+    // Skip if no attachableId (will be recorded as failed)
+    if (!attachableId) {
+      const failure = {
+        attachableId: null,
+        fileName: originalFileName,
+        error: 'Missing attachableId',
+        timestamp: new Date().toISOString(),
+      };
+      failed.push(failure);
+      console.log(`[downloadAllAttachments] Skipped: Missing attachableId for ${originalFileName}`);
+      continue;
+    }
+
+    // Generate Phase 5B filename: {txnType}_{docNumber}_{originalFileName}
+    const newFileName = `${sanitize(txnType)}_${sanitize(docNumber)}_${originalFileName}`;
+
+    console.log(`[downloadAllAttachments] Downloading ${attachableId} -> ${newFileName}`);
+
+    // Reuse downloadFile() - Phase 5A implementation
+    const result = await downloadFile(attachableId, newFileName, destFolder);
+
+    if (result.success) {
+      // Get file size
+      let fileSize = 0;
+      if (result.filePath && fs.existsSync(result.filePath)) {
+        const stats = fs.statSync(result.filePath);
+        fileSize = stats.size;
+      }
+      
+      successful.push({
+        attachableId,
+        fileName: newFileName,
+        txnType,
+        docNumber,
+        filePath: result.filePath!,
+        fileSize,
+      });
+      console.log(`[downloadAllAttachments] Success: ${attachableId} (${fileSize} bytes)`);
+    } else {
+      failed.push({
+        attachableId,
+        fileName: newFileName,
+        error: result.error || 'Unknown error',
+        timestamp: result.timestamp ?? new Date().toISOString(),
+      });
+      console.log(`[downloadAllAttachments] Failed: ${attachableId} - ${result.error}`);
+    }
+  }
+
+  const totalAttempted = attachmentsToDownload.length;
+  const successfulCount = successful.length;
+  const failedCount = failed.length;
+
+  console.log(`[downloadAllAttachments] Complete: ${successfulCount} successful, ${failedCount} failed, ${totalAttempted} total`);
+
+  return {
+    successful,
+    failed,
+    totalAttempted,
+    successfulCount,
+    failedCount,
+  };
 }
 
 /**

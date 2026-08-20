@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { downloadFile } from '@/lib/quickbooks';
+import { downloadFile, DownloadFileResult } from '@/lib/quickbooks';
 import { getAttachables, normalizeAttachables } from '@/lib/quickbooks';
 
 /**
  * GET /api/quickbooks/attachables/[attachableId]/download
  * Downloads a single attachment file from QuickBooks and saves it with the new naming convention:
  * {txnType}_{docNumber}_{originalFileName}
+ * 
+ * Phase 5C: Returns structured response with failed[] array instead of throwing 500
  */
 export async function GET(
   request: NextRequest,
@@ -20,7 +22,23 @@ export async function GET(
     
     const attachable = normalized.find(a => a.attachableId === attachableId);
     if (!attachable) {
-      return NextResponse.json({ error: 'Attachable not found' }, { status: 404 });
+      // Phase 5C: Log and return structured failure with failed[] array
+      console.error(`Download failed for attachableId=${attachableId}: Attachable not found`);
+      const failedEntry = {
+        success: false,
+        error: 'Attachable not found',
+        attachableId,
+        fileName: 'unknown',
+        timestamp: new Date().toISOString(),
+      };
+      return NextResponse.json({
+        success: false,
+        error: 'Attachable not found',
+        attachableId,
+        fileName: 'unknown',
+        timestamp: new Date().toISOString(),
+        failed: [failedEntry],
+      }, { status: 200 }); // Return 200 with failure info instead of 404
     }
 
     // 2. Get the evidence register to find txnType and docNumber for this attachable
@@ -68,11 +86,20 @@ export async function GET(
     const originalFileName = attachable.fileName || 'unknown';
     const newFileName = `${sanitize(txnType)}_${sanitize(docNumber)}_${originalFileName}`;
 
-    // 6. Download the file
-    const result = await downloadFile(attachableId, newFileName, destFolder);
+    // 6. Download the file with failure collection
+    const failed: DownloadFileResult[] = [];
+    const result = await downloadFile(attachableId, newFileName, destFolder, failed);
 
+    // Phase 5C: Return structured response with failed[] instead of 500
     if (!result.success) {
-      return NextResponse.json({ error: result.error }, { status: 500 });
+      return NextResponse.json({
+        success: false,
+        error: result.error,
+        attachableId: result.attachableId,
+        fileName: result.fileName,
+        timestamp: result.timestamp,
+        failed: failed,
+      }, { status: 200 }); // Return 200 with failure info instead of 500
     }
 
     return NextResponse.json({
@@ -82,9 +109,24 @@ export async function GET(
       txnType,
       docNumber,
       originalFileName,
+      failed: failed, // Empty array for successful downloads
     });
   } catch (e: any) {
     console.error('Download endpoint error:', e);
-    return NextResponse.json({ error: e.message }, { status: 500 });
+    // Even unexpected errors should not crash - return structured failure
+    return NextResponse.json({
+      success: false,
+      error: e.message,
+      attachableId: (await params).attachableId,
+      fileName: 'unknown',
+      timestamp: new Date().toISOString(),
+      failed: [{
+        success: false,
+        error: e.message,
+        attachableId: (await params).attachableId,
+        fileName: 'unknown',
+        timestamp: new Date().toISOString(),
+      }],
+    }, { status: 200 });
   }
 }
