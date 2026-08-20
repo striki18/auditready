@@ -367,6 +367,84 @@ export async function getAttachables() {
 }
 
 /**
+ * Phase 5A – Download a single attachment file from QuickBooks.
+ *
+ * Uses the QuickBooks Online attachment download endpoint:
+ *   GET /v3/company/{companyId}/download/{attachableId}
+ *
+ * Authenticates using the existing QBO Bearer access token mechanism.
+ * Retrieves the actual attachment bytes and saves to the destination folder.
+ *
+ * @param attachableId - The QuickBooks Attachable Id
+ * @param fileName - The original file name (used for saving)
+ * @param destFolder - The destination folder path
+ * @returns Object with success status, file path, and any error message
+ */
+export async function downloadFile(
+  attachableId: string,
+  fileName: string,
+  destFolder: string
+): Promise<{ success: boolean; filePath?: string; error?: string }> {
+  try {
+    // 1. Get valid access token (handles refresh automatically)
+    const accessToken = await getAccessToken();
+    // 2. Resolve realm ID
+    const stored = await getStoredToken();
+    const realmId = stored?.realm_id || process.env.INTUIT_REALM_ID;
+    if (!realmId) throw new Error('Realm ID not available');
+
+    // 3. Build the download URL using the sandbox domain
+    const sandboxDomain = 'https://sandbox-quickbooks.api.intuit.com';
+    const downloadUrl = `${sandboxDomain}/v3/company/${realmId}/download/${attachableId}`;
+
+    console.log('🔍 Download request URL:', downloadUrl);
+
+    // 4. Make the download request with Bearer authorization
+    // The download endpoint does not accept application/octet-stream - omit Accept header
+    const res = await fetch(downloadUrl, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+
+    console.log('🔍 Download response status:', res.status);
+
+    if (!res.ok) {
+      const errBody = await res.text();
+      console.error('Failed to download attachment:', res.status, errBody);
+      return { success: false, error: `Download failed: ${res.status} ${errBody}` };
+    }
+
+    // 5. Get the file bytes as ArrayBuffer
+    const arrayBuffer = await res.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+
+    if (buffer.length === 0) {
+      return { success: false, error: 'Downloaded file is empty' };
+    }
+
+    // 6. Ensure destination folder exists
+    const fs = await import('fs');
+    const path = await import('path');
+    if (!fs.existsSync(destFolder)) {
+      fs.mkdirSync(destFolder, { recursive: true });
+    }
+
+    // 7. Save the file
+    const filePath = path.join(destFolder, fileName);
+    fs.writeFileSync(filePath, buffer);
+
+    console.log('🔍 File saved to:', filePath, 'Size:', buffer.length, 'bytes');
+
+    return { success: true, filePath };
+  } catch (e: any) {
+    console.error('Download error:', e);
+    return { success: false, error: e.message };
+  }
+}
+
+/**
  * Normalize the TransactionList report into a flat array of transaction objects.
  *
  * The TransactionList report contains a header section that defines column titles
