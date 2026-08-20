@@ -193,6 +193,23 @@ It is not automatically:
 - a build failure;
 - evidence that the implementation is wrong.
 
+If the same tool call fails twice because a required parameter is missing,
+DO NOT invoke the same tool again.
+
+STOP the current operation and report:
+
+TOOL_CALL_BLOCKED
+
+Include:
+- tool name
+- missing parameter
+- number of failed attempts
+- exact error
+- intended operation
+- what information is still required
+
+Wait for a new instruction or corrected tool invocation.
+
 ==================================================
 ## 6. WINDOWS / TERMINAL
 ==================================================
@@ -504,76 +521,10 @@ STOP and report the architectural conflict before redesigning it.
 ## 14. MODEL SELECTION
 ==================================================
 
-### Nano 3 — FAST EXECUTION
+==================================================
+## 14. MODEL SELECTION
+==================================================
 
-Model ID:
-
-nvidia/nemotron-3-nano-30b-a3b
-
-Prefer Nano 3 for:
-
-- simple code reading;
-- locating known files/functions;
-- straightforward implementation;
-- mechanical edits;
-- boilerplate;
-- isolated fixes;
-- simple commands;
-- simple tests;
-- clearly defined tasks with an obvious solution.
-
-Do not rely on Nano 3 alone for:
-
-- difficult debugging;
-- ambiguous compiler errors;
-- complex API failures;
-- architecture changes;
-- multi-file reasoning;
-- unclear root causes;
-- production-critical verification.
-
-### Lightning 3.5 — COMPLEX REASONING
-
-Model ID:
-
-nvidia/nemotron-3.5-lightning-30b-a3b
-
-Prefer Lightning 3.5 for:
-
-- difficult debugging;
-- compiler/type-system problems;
-- API/integration failures;
-- ambiguous runtime failures;
-- complex data-shape problems;
-- architecture decisions;
-- multi-file reasoning;
-- difficult verification;
-- reviewing Nano 3's work;
-- production-critical reasoning.
-
-### ESCALATION
-
-Escalate Nano 3 → Lightning 3.5 when:
-
-- Nano cannot establish the root cause;
-- Nano encounters repeated errors;
-- Nano starts guessing;
-- Nano reports success without evidence;
-- Nano encounters unfamiliar compiler/API/tool errors;
-- the task becomes ambiguous;
-- verification fails;
-- architecture is affected;
-- previously verified functionality may be affected.
-
-When escalating:
-
-1. Preserve the exact original task.
-2. Preserve the exact error/output.
-3. Preserve the current working state.
-4. Do not erase failed evidence.
-5. Do not tell Lightning that Nano succeeded unless that success was verified.
-6. Give Lightning the actual evidence.
-7. Independently verify Lightning's result.
 
 ==================================================
 ## 15. CHANGE CONTROL
