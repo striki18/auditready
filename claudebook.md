@@ -15,10 +15,10 @@ Living execution/status tracker for the AuditReady Build Checklist.
 
 ## CURRENT POSITION
 
-**Current phase:** Phase 4 — The Mapping Join  
-**Current sub‑phase:** 4D — Verification (deterministic + real Sandbox)  
-**Last verified milestone:** Phase 4D — Verification (deterministic + real Sandbox)  
-**Next milestone:** Begin Phase 5 implementation.
+**Current phase:** Phase 5 — Download Attachment Files  
+**Current sub‑phase:** 5E — Sandbox verification  
+**Last verified milestone:** Phase 5E — Sandbox verification  
+**Next milestone:** Begin Phase 6 implementation.
 
 ---
 
@@ -26,23 +26,23 @@ Living execution/status tracker for the AuditReady Build Checklist.
 
 **Phases**
  - Total tracked phases: 14
- - Completed phases: 4
+ - Completed phases: 5
  - In‑progress phases: 0
- - Not‑started phases: 10
+ - Not‑started phases: 9
  - Blocked phases: 0
 
 **Milestones**
  - Total milestones: 54
- - Completed milestones: 17
+ - Completed milestones: 22
  - In‑progress milestones: 0
- - Not‑started milestones: 37
+ - Not‑started milestones: 32
  - Blocked milestones: 0
 
 **Current status**
- - Current phase: Phase 4 — The Mapping Join
- **Current sub‑phase:** 4D — Verification (deterministic + real Sandbox)
- - Last verified milestone: Phase 4D — Verification (deterministic + real Sandbox)
- - Next milestone: Begin Phase 5 implementation.
+ - Current phase: Phase 5 — Download Attachment Files
+ **Current sub‑phase:** 5E — Sandbox verification
+ - Last verified milestone: Phase 5E — Sandbox verification
+ - Next milestone: Begin Phase 6 implementation.
 
 **Phase progress**
  - Phase 0 — Developer Environment: 2/3
@@ -54,7 +54,7 @@ Living execution/status tracker for the AuditReady Build Checklist.
     - Phase 4B — Matching: [✓] COMPLETE
     - Phase 4C — Missing evidence: [✓] COMPLETE
     - Phase 4D — Verification (deterministic + real Sandbox): [✓] COMPLETE
- - Phase 5 — Download Attachment Files: 0/5
+ - Phase 5 — Download Attachment Files: 5/5
  - Phase 6 — Generate CSV Outputs: 0/4
  - Phase 7 — Generate ZIP Package: 0/3
  - Phase 8 — End‑to‑End Script: 0/5
@@ -285,36 +285,47 @@ Living execution/status tracker for the AuditReady Build Checklist.
 ---
 
 # PHASE 5 — Download Attachment Files
-**Status: [ ] NOT STARTED — 0/5**
+**Status: [✓] COMPLETE — 5/5**
 
-### 5A — Single download [ ]
-- [ ] `downloadFile(attachableId, fileName, destFolder)`
-- [ ] Use QBO attachment download endpoint
-- [ ] Bearer authorization
-- [ ] Retrieve actual file
+### 5A — Single download [✓] COMPLETE / VERIFIED
+- [✓] `downloadFile(attachableId, fileName, destFolder)`
+- [✓] Use QBO attachment download endpoint
+- [✓] Bearer authorization
+- [✓] Retrieve actual file
 
-### 5B — Storage/naming [ ]
-- [ ] Save to attachment directory
-- [ ] Rename `{txnType}_{docNumber}_{originalFileName}`
+### 5B — Storage/naming [✓] COMPLETE / VERIFIED
+- [✓] Save to attachment directory
+- [✓] Rename `{txnType}_{docNumber}_{originalFileName}`
+- [✓] Filename convention verified, including `N/A → N_A` sanitization
+- [✓] Extensions preserved
 
-### 5C — Failure handling [ ]
-- [ ] Failed downloads do not crash job
-- [ ] Log failures
-- [ ] `failed[]`
+### 5C — Failure handling [✓] COMPLETE / VERIFIED
+- [✓] Failed downloads do not crash job
+- [✓] Log failures
+- [✓] `failed[]` populated correctly
+- [✓] Verified using invalid attachable ID `9999999999`
 
-### 5D — Bulk download [ ]
-- [ ] `downloadAllAttachments(matched[])`
-- [ ] Download every matched attachment
+### 5D — Bulk download [✓] COMPLETE / VERIFIED
+- [✓] `downloadAllAttachments(matched[])`
+- [✓] Download every matched attachment
+- [✓] Bulk test: 4 valid + 1 invalid = 5 attempted, 4 successful, 1 failed
 
-### 5E — Sandbox verification [ ]
-- [ ] Actual files exist
-- [ ] Names are correct
-- [ ] Files open
-- [ ] Zero unexpected crashes
+### 5E — Sandbox verification [✓] COMPLETE / VERIFIED
+- [✓] Actual files exist
+- [✓] Names are correct
+- [✓] Files open
+- [✓] Zero unexpected crashes
+- [✓] Downloaded files are non-empty/readable
+- [✓] Real QuickBooks Sandbox downloads succeeded
+- [✓] Multiple attachments downloaded successfully
+- [✓] `npm run build` passed
+- [✓] Independent double-check passed
+- [✓] Temporary verification files cleaned
+- [✓] No production files were modified during final verification
+- [✓] Existing local `attachments/` directory remains untracked and must NOT be added to Git
 
-**Gate:** Renamed files exist and are usable.
+**Gate:** Renamed files exist and are usable. **PASSED**
 
----
 
 # PHASE 6 — Generate CSV Outputs
 **Status: [ ] NOT STARTED — 0/4**
@@ -657,10 +668,29 @@ UI was created earlier than the original checklist sequence. It does not count l
 - Orphaned attachments appear in register with null transaction fields and orphaned=true.
 - Multiple attachments per transaction correctly produce multiple register rows.
 
+### Phase 5A/5B/5C/5D/5E — Verified
+- `downloadFile(attachableId, fileName, destFolder)` implemented and called successfully against real QBO Sandbox.
+- Real QuickBooks Sandbox downloads succeeded — actual file bytes retrieved.
+- Multiple attachments downloaded successfully in single and bulk operations.
+- Filename convention `{txnType}_{docNumber}_{originalFileName}` verified.
+- `N/A → N_A` sanitization verified for orphaned/orphan records.
+- File extensions preserved correctly (PDF, CSV, etc.).
+- Failed downloads do not crash workflow — invalid attachable ID `9999999999` tested.
+- `failed[]` array populated correctly with failed attachable IDs.
+- Bulk test: 4 valid + 1 invalid = 5 attempted, 4 successful, 1 failed.
+- Downloaded files are non-empty and readable.
+- `npm run build` passed.
+- Independent double-check passed.
+- Temporary verification files cleaned.
+- No production files were modified during final verification.
+- Existing local `attachments/` directory remains untracked and must NOT be added to Git.
+
+**Phase 5 = 5/5 COMPLETE.**
+
 ---
 
 # NEXT EXECUTION TARGET
 
-**Phase 5 / 5A — Single download**
+**Phase 6 / 6A — Evidence register CSV**
 
-Do not advance beyond Phase 5 until its gate is passed.
+Do not advance beyond Phase 6 until its gate is passed.
