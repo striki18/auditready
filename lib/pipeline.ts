@@ -32,7 +32,7 @@ export interface PipelineResult {
 
 export interface PipelineProgress {
   stage: string;
-  status: 'started' | 'completed' | 'failed';
+  status: 'started' | 'in_progress' | 'completed' | 'failed';
   message: string;
   timestamp: string;
   counts?: Record<string, number>;
@@ -68,7 +68,7 @@ export async function generatePackage(
   };
 
   // Helper to log progress
-  const logProgress = (stage: string, status: 'started' | 'completed' | 'failed', message: string, counts?: Record<string, number>) => {
+  const logProgress = (stage: string, status: 'started' | 'in_progress' | 'completed' | 'failed', message: string, counts?: Record<string, number>) => {
     const entry: PipelineProgress = {
       stage,
       status,
@@ -158,7 +158,11 @@ export async function generatePackage(
     
     let downloadResult: any;
     try {
-      downloadResult = await downloadAllAttachments(matched, startDate, endDate);
+      downloadResult = await downloadAllAttachments(matched, startDate, endDate, (progress) => {
+        // Phase 10C: Log progress updates
+        logProgress('Attachment Download', 'in_progress', 
+          `Progress: ${progress.completed}/${progress.totalAttachments} (Successful: ${progress.successful}, Failed: ${progress.failed}) - Current: ${progress.currentFile}`);
+      });
     } catch (e: any) {
       return handleFailure('Attachment Download', `Failed to download attachments: ${e.message}`, { error: e.message });
     }
