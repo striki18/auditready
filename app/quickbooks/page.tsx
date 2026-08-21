@@ -31,6 +31,15 @@ export default function QuickbooksPage() {
   const [auditType, setAuditType] = useState('Year-end Audit');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  
+  // Package generation state
+  const [generating, setGenerating] = useState(false);
+  const [progressMessage, setProgressMessage] = useState('');
+  const [progressStage, setProgressStage] = useState('');
+  const [packageResult, setPackageResult] = useState<{ success: boolean; zipPath?: string; error?: string; packageName?: string } | null>(null);
+  // Download state
+  const [downloading, setDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
 
   const fetchCompanyInfo = async () => {
     try {
@@ -175,6 +184,96 @@ export default function QuickbooksPage() {
     }
   };
 
+  const handleGeneratePackage = async () => {
+    if (!current) return;
+    // Set status BEFORE the API call to avoid race condition
+    setGenerating(true);
+    setProgressMessage('Generating package...');
+    setProgressStage('Generating');
+    setPackageResult(null);
+    setDownloadError(null);
+    
+    try {
+      // Call the actual Phase 9B generation endpoint
+      const payload = {
+        companyId: current.company_name,
+        startDate: current.start_date,
+        endDate: current.end_date,
+      };
+      
+      const res = await fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      
+      const result = await res.json();
+      
+      if (!res.ok || !result.success) {
+        throw new Error(result.error?.reason || 'Package generation failed');
+      }
+      
+      setProgressStage('Finalizing');
+      setProgressMessage('Package generated successfully');
+      
+      setPackageResult({ 
+        success: true, 
+        zipPath: result.packagePath,
+        packageName: result.packageName,
+      });
+    } catch (e: any) {
+      setPackageResult({ 
+        success: false, 
+        error: e.message 
+      });
+    } finally {
+      setGenerating(false);
+      setProgressStage('Complete');
+      setProgressMessage('Package generation complete');
+    }
+  };
+
+  const handleDownload = async () => {
+    if (!current || !packageResult?.packageName) return;
+    setDownloading(true);
+    setDownloadError(null);
+    
+    try {
+      const url = `/api/download?companyId=${encodeURIComponent(current.company_name)}&startDate=${encodeURIComponent(current.start_date)}&endDate=${encodeURIComponent(current.end_date)}`;
+      
+      const res = await fetch(url);
+      
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({ error: 'Download failed' }));
+        throw new Error(errorData.error || `Download failed with status ${res.status}`);
+      }
+      
+      // Get the filename from Content-Disposition header or use the known name
+      const contentDisposition = res.headers.get('Content-Disposition');
+      let filename = packageResult.packageName || 'AuditPackage.zip';
+      if (contentDisposition) {
+        const match = contentDisposition.match(/filename="([^"]+)"/);
+        if (match) filename = match[1];
+      }
+      
+      // Download the file
+      const blob = await res.blob();
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = downloadUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(downloadUrl);
+      document.body.removeChild(a);
+      
+    } catch (e: any) {
+      setDownloadError(e.message);
+    } finally {
+      setDownloading(false);
+    }
+  };
+
   if (loading) return <p>Loading...</p>;
 
   const current = engagements[0];
@@ -184,12 +283,12 @@ export default function QuickbooksPage() {
       <h1>Audit Engagement</h1>
       {error && <p style={{ color: 'red' }}>{error}</p>}
       {company ? (
-        <div>
+        <div data-testid="connection-status">
           <h2>Connected Company</h2>
           <p>{company?.CompanyInfo?.CompanyName || 'Unnamed'}</p>
         </div>
       ) : (
-        <button onClick={handleConnect}>Connect QuickBooks</button>
+        <button onClick={handleConnect} data-testid="connect-button">Connect QuickBooks</button>
       )}
       {company && (
         <div style={{ marginTop: '1rem' }}>
@@ -215,6 +314,49 @@ export default function QuickbooksPage() {
           <p><strong>Audit Type:</strong> {current.audit_type}</p>
           <p><strong>Period:</strong> {current.start_date} to {current.end_date}</p>
           <p><strong>Status:</strong> {current.status}</p>
+        </div>
+      )}
+      {/* Generate Package Section - Phase 9A */}
+      {current && (
+        <div style={{ marginTop: '2rem', padding: '1rem', border: '1px solid #ddd', borderRadius: '4px' }}>
+          <h2>Generate Evidence Package</h2>
+          <p>Generate an audit evidence package for the current engagement.</p>
+          <button 
+            onClick={handleGeneratePackage} 
+            disabled={generating}
+            style={{ marginRight: '1rem', padding: '0.5rem 1rem' }}
+            data-testid="generate-button"
+          >
+            {generating ? 'Generating...' : 'Generate Package'}
+          </button>
+          {progressStage && (
+            <div style={{ marginTop: '1rem', padding: '1rem', background: '#f5f5f5', borderRadius: '4px' }} data-testid="package-status">
+              <p><strong>Status:</strong> {progressMessage || 'Ready'}</p>
+              <p><strong>Stage:</strong> {progressStage}</p>
+              {generating && <p>Progress indicator...</p>}
+            </div>
+          )}
+          {packageResult && (
+            <div style={{ marginTop: '1rem', padding: '1rem', borderRadius: '4px', 
+              background: packageResult.success ? '#d4edda' : '#f8d7da',
+              color: packageResult.success ? '#155724' : '#721c24'
+            }}>
+              <p><strong>Result:</strong> {packageResult.success ? 'Success' : 'Failed'}</p>
+              {packageResult.zipPath && <p>Package: {packageResult.zipPath}</p>}
+              {packageResult.packageName && <p>Package Name: {packageResult.packageName}</p>}
+              {packageResult.error && <p>Error: {packageResult.error}</p>}
+              {packageResult.success && packageResult.packageName && (
+                <button 
+                  onClick={handleDownload} 
+                  disabled={downloading}
+                  style={{ marginTop: '1rem', padding: '0.5rem 1rem', marginRight: '1rem' }}
+                  data-testid="download-button"
+                >
+                  {downloading ? 'Downloading...' : 'Download Package'}
+                </button>
+              )}
+            </div>
+          )}
         </div>
       )}
       {/* Evidence Plan Section */}
