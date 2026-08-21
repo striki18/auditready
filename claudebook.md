@@ -15,54 +15,54 @@ Living execution/status tracker for the AuditReady Build Checklist.
 
 ## CURRENT POSITION
 
-**Current phase:** Phase 9 — Minimal Web UI
-**Current sub‑phase:** 9A — Basic UI
-**Last verified milestone:** Phase 8E — End-to-End Script (5/5)
-**Next milestone:** Phase 9A — Basic UI
+**Current phase:** Phase 12 — Real Company Test
+**Current sub‑phase:** 12A — Real company
+**Last verified milestone:** Phase 11C — Expiry test (3/3)
+**Next milestone:** 12A
 
 ---
 
 ## Dashboard
  
  **Phases**
-  - Total tracked phases: 14
-  - Completed phases: 9
-  - In‑progress phases: 1
-  - Not‑started phases: 4
-  - Blocked phases: 0
- 
+   - Total tracked phases: 14
+   - Completed phases: 11
+   - In‑progress phases: 0
+   - Not‑started phases: 3
+   - Blocked phases: 0
+  
  **Milestones**
-  - Total milestones: 54
-  - Completed milestones: 46
-  - In‑progress milestones: 1
-  - Not‑started milestones: 7
-  - Blocked milestones: 0
- 
+   - Total milestones: 54
+   - Completed milestones: 49
+   - In‑progress milestones: 0
+   - Not‑started milestones: 5
+   - Blocked milestones: 0
+  
  **Current status**
-  - Current phase: Phase 11 — Token Refresh
-  - Current sub‑phase: 11B — Refresh implementation
-  - Last verified milestone: Phase 10C — Stress Verification (3/3)
-  - Next milestone: Phase 11B — Refresh implementation
- 
+   - Current phase: Phase 12 — Real Company Test
+   - Current sub‑phase: 12A — Real company
+   - Last verified milestone: Phase 11C — Expiry test (3/3)
+   - Next milestone: 12A
+  
  **Phase progress**
-  - Phase 0 — Developer Environment: 2/3
-  - Phase 1 — QBO OAuth Connection: 3/3
-  - Phase 2 — Pull Transactions: 4/4
-  - Phase 3 — Pull Attachments via Attachable API: 5/5
-  - Phase 4 — The Mapping Join: 4/4
-      - Phase 4A — Evidence register: [✓] COMPLETE
-      - Phase 4B — Matching: [✓] COMPLETE
-      - Phase 4C — Missing evidence: [✓] COMPLETE
-      - Phase 4D — Verification (deterministic + real Sandbox): [✓] COMPLETE
-  - Phase 5 — Download Attachment Files: 5/5
-  - Phase 6 — Generate CSV Outputs: 4/4
-  - Phase 7 — Generate ZIP Package: 3/3
-  - Phase 8 — End‑to‑End Script: 5/5
-  - Phase 9 — Minimal Web UI: 1/4
-  - Phase 10 — Rate Limit Handling: 3/3
-  - Phase 11 — Token Refresh: 1/3
-  - Phase 12 — Real Company Test: 0/5
-  - Phase 13 — First Interviews With Output: 0/3
+   - Phase 0 — Developer Environment: 2/3
+   - Phase 1 — QBO OAuth Connection: 3/3
+   - Phase 2 — Pull Transactions: 4/4
+   - Phase 3 — Pull Attachments via Attachable API: 5/5
+   - Phase 4 — The Mapping Join: 4/4
+       - Phase 4A — Evidence register: [✓] COMPLETE
+       - Phase 4B — Matching: [✓] COMPLETE
+       - Phase 4C — Missing evidence: [✓] COMPLETE
+       - Phase 4D — Verification (deterministic + real Sandbox): [✓] COMPLETE
+   - Phase 5 — Download Attachment Files: 5/5
+   - Phase 6 — Generate CSV Outputs: 4/4
+   - Phase 7 — Generate ZIP Package: 3/3
+   - Phase 8 — End‑to‑End Script: 5/5
+   - Phase 9 — Minimal Web UI: 4/4
+   - Phase 10 — Rate Limit Handling: 3/3
+   - Phase 11 — Token Refresh: 3/3
+   - Phase 12 — Real Company Test: 0/5
+   - Phase 13 — First Interviews With Output: 0/3
 
 # PHASE 0 — Developer Environment
 **Status: [~] Not fully verified — 2/3**
@@ -481,9 +481,9 @@ Verified:
 ---
 
 # PHASE 9 — Minimal Web UI
-**Status: [~] PARTIAL / NOT GATE-VERIFIED — 1/4**
+**Status: [✓] COMPLETE — 4/4**
 
-### 9A — Basic UI [~]
+### 9A — Basic UI [✓]
 - [✓] `/quickbooks` exists
 - [✓] Connect QuickBooks exists
 - [✓] Start date final workflow
@@ -491,29 +491,33 @@ Verified:
 - [✓] Generate Package
 - [✓] Progress/status
 
-### 9B — Generate endpoint [ ]
-- [ ] `/generate` POST
-- [ ] `startDate`
-- [ ] `endDate`
-- [ ] Runs `generatePackage()`
+### 9B — Generate endpoint [✓]
+- [✓] `/generate` POST
+- [✓] `startDate`
+- [✓] `endDate`
+- [✓] Runs `generatePackage()`
 
-### 9C — Download flow [ ]
-- [ ] Return ZIP link
-- [ ] Browser download
-- [ ] ZIP verified
+### 9C — Download flow [✓]
+- [✓] Return ZIP link
+- [✓] Browser download
+- [✓] ZIP verified
 
-### 9D — Browser E2E [ ]
-- [ ] Connect
-- [ ] Enter dates
-- [ ] Generate
-- [ ] Download
-- [ ] Verify package
+### 9D — Browser E2E [✓]
+- [✓] Connect
+- [✓] Enter dates
+- [✓] Generate
+- [✓] Download
+- [✓] Verify package
 
-**Gate:** Non-technical user can complete it without terminal. **NOT PASSED**
+**Gate:** Non-technical user can complete it without terminal. **PASSED**
 
-**Note:** UI exists but the full workflow (9B, 9C, 9D) has not been gate-verified.
+**Phase 9 sub-phases:**
+9A=PASS
+9B=PASS
+9C=PASS
+9D=PASS
 
----
+**Note:** Phase 9 is fully verified. Historical Phase 9 findings/limitations preserved.
 
 # PHASE 10 — Rate Limit Handling
 **Status: [✓] COMPLETE — 3/3**
@@ -568,27 +572,36 @@ The 429 retry mechanism was deterministically verified.
 ---
 
 # PHASE 11 — Token Refresh
-**Status: [~] IMPLEMENTED / NOT FULLY VERIFIED — 1/3**
+**Status: [✓] COMPLETE — 3/3**
 
-### 11A — Refresh storage [~]
+### 11A — Refresh storage [✓]
 - [✓] Refresh token received
 - [✓] Refresh token stored server-side
-- [ ] Lifecycle persistence fully verified
+- [✓] Lifecycle persistence fully verified
 
-### 11B — Refresh implementation [~]
-- [~] Existing client contains refresh handling
-- [ ] Verify Intuit refresh endpoint
-- [ ] Verify new token storage
-- [ ] Verify refresh trigger threshold
+### 11B — Refresh implementation [✓]
+- [✓] Existing client contains refresh handling
+- [✓] Verify Intuit refresh endpoint
+- [✓] Verify new token storage
+- [✓] Verify refresh trigger threshold
 
-### 11C — Expiry test [ ]
-- [ ] Run job across token expiry
-- [ ] Confirm no auth failure
-- [ ] Confirm job continues
+### 11C — Expiry test [✓]
+- [✓] Run job across token expiry
+- [✓] Confirm no auth failure
+- [✓] Confirm job continues
 
-**Gate:** Long-running job survives access-token expiry. **NOT PASSED**
+**Gate:** Long-running job survives access-token expiry. **PASSED**
 
----
+**Phase 11 sub-phases:**
+11A=PASS
+11B=PASS
+11C=PASS
+
+**Preserved verification limitations:**
+REAL_TOKEN_EXPIRY_OBSERVED=NO
+TOKEN_EXPIRY_LIFECYCLE_SIMULATION=PASS
+
+**Note:** Do NOT claim that a real Sandbox token actually expired.
 
 # PHASE 12 — Real Company Test
 **Status: [ ] NOT STARTED — 0/5**
@@ -852,17 +865,22 @@ Do not mark Phase 9 complete until its gate is passed.
 | Phase 6 | 4 | 4/4 — **COMPLETE** |
 | Phase 7 | 3 | 3/3 — **COMPLETE** |
 | Phase 8 | 5 | 5/5 — **COMPLETE** |
-| Phase 9 | 4 | 1/4 — PARTIAL |
+| Phase 9 | 4 | 4/4 — **COMPLETE** |
 | Phase 10 | 3 | 3/3 — **COMPLETE** |
-| Phase 11 | 3 | 1/3 — PARTIAL |
+| Phase 11 | 3 | 3/3 — **COMPLETE** |
 | Phase 12 | 5 | 0/5 — NOT STARTED |
 | Phase 13 | 3 | 0/3 — NOT STARTED |
  
-**Completed phases: 9 (Phases 1–8, 10)**
-**Partial phases: 3 (Phase 0, Phase 9, Phase 11)**
+**Completed phases: 11 (Phases 1–11)**
+**Partial phases: 1 (Phase 0)**
 **Not started: 2 (Phases 12, 13)**
  
 **Milestone totals:**
-- Completed milestones: 46
-- In-progress milestones: 1
-- Not-started milestones: 7
+- Completed milestones: 49
+- In-progress milestones: 0
+- Not-started milestones: 5
+
+**Phase gate status:**
+PHASE_9_GATE=PASSED
+PHASE_10_GATE=PASSED
+PHASE_11_GATE=PASSED
