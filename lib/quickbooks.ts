@@ -743,9 +743,16 @@ export function normalizeTransactionList(report: any) {
 
     const amountNumber = rawAmount !== null && rawAmount !== '' ? Number(rawAmount) : null;
 
+    // Normalize transaction type to canonical QuickBooks entity type
+    // used by AttachableRef (e.g., "Bill Payment (Check)" -> "BillPayment")
+    let normalizedTxnType = rawTxnType ?? null;
+    if (normalizedTxnType === 'Bill Payment (Check)') {
+      normalizedTxnType = 'BillPayment';
+    }
+
     return {
       txnId: rawTxnId ?? null,
-      txnType: rawTxnType ?? null,
+      txnType: normalizedTxnType,
       date: rawDate ?? null,
       vendor: rawVendor ?? null,
       amount: amountNumber,
