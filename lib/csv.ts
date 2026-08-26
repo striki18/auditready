@@ -65,7 +65,7 @@ export function generateEvidenceRegisterCsv(matched: any[]): string {
     amount: m.amount ?? '',
     fileName: m.fileName ?? '',
     attachableId: m.attachableId ?? '',
-    status: m.hasAttachment ? 'Matched' : 'Missing',
+    status: m.unmatched ? 'Unmatched' : (m.hasAttachment ? 'Matched' : 'Missing'),
   }));
   
   return generateCsv(csvRecords, columns);

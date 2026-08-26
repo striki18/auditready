@@ -34,6 +34,9 @@ export function buildEvidenceRegister(
   // 5️⃣ Ensure orphaned attachments are not lost – they are added after the
   //    transaction loop with null transaction fields.
   // 6️⃣ Support multiple attachments per transaction by emitting a row for each.
+  // 7️⃣ Track attachables that reference non-transaction entities (Vendor,
+  //    Customer, etc.) and surface them as "unmatched" rows so they are not
+  //    silently dropped from the register.
   // ---------------------------------------------------------------------
 
   const attachMap: Record<string, any[]> = {};
@@ -51,6 +54,10 @@ export function buildEvidenceRegister(
   }
 
   const register: any[] = [];
+
+  // Track which attachables were successfully matched to a transaction.
+  // Use a Set of attachableId strings for O(1) lookup.
+  const consumedAttachableIds = new Set<string>();
 
   for (const txn of transactions) {
     const key = `${txn.txnType ?? ''}:${txn.txnId ?? ''}`;
@@ -76,6 +83,10 @@ export function buildEvidenceRegister(
       continue;
     }
     for (const att of related) {
+      // Mark this attachable as consumed by a transaction match.
+      if (att.attachableId) {
+        consumedAttachableIds.add(att.attachableId);
+      }
       register.push({
         txnId: txn.txnId,
         txnType: txn.txnType,
@@ -113,6 +124,35 @@ export function buildEvidenceRegister(
       entityId: att.entityId,
       orphaned: true,
       hasAttachment: true,
+    });
+  }
+
+  // BUG 2 FIX: Add unmatched attachables - those with a valid AttachableRef
+  // that points to a non-transaction entity (Vendor, Customer, etc.).
+  // These have entityType/entityId but were not consumed by any transaction match.
+  for (const a of attachables) {
+    if (a.orphaned) continue; // Already handled above
+    if (!a.attachableId) continue; // Safety check
+    if (consumedAttachableIds.has(a.attachableId)) continue; // Already matched
+
+    // This attachable has a valid reference but was not matched to any transaction.
+    // It points to a non-transaction entity (Vendor, Customer, etc.).
+    register.push({
+      txnId: null,
+      txnType: a.entityType, // The entity type (e.g., "Vendor", "Customer")
+      date: null,
+      vendor: null,
+      amount: null,
+      docNumber: null,
+      attachableId: a.attachableId,
+      fileName: a.fileName,
+      fileSize: a.fileSize,
+      downloadUrl: a.downloadUrl,
+      entityType: a.entityType,
+      entityId: a.entityId,
+      orphaned: false,
+      hasAttachment: true,
+      unmatched: true,
     });
   }
 
