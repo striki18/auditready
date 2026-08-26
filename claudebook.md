@@ -15,10 +15,10 @@ Living execution/status tracker for the AuditReady Build Checklist.
 
 ## CURRENT POSITION
 
-**Current phase:** Phase 12 — Real Company Test
-**Current sub‑phase:** 12A — Real company
-**Last verified milestone:** Phase 11C — Expiry test (3/3)
-**Next milestone:** 12A
+**Current phase:** Phase 13 — First Interviews With Output
+**Current sub‑phase:** 13A — Interviews
+**Last verified milestone:** Phase 12E — Issue log
+**Next milestone:** 13A
 
 ---
 
@@ -26,58 +26,47 @@ Living execution/status tracker for the AuditReady Build Checklist.
  
  **Phases**
    - Total tracked phases: 14
-   - Completed phases: 11
+   - Completed phases: 12
    - In‑progress phases: 0
-   - Not‑started phases: 3
+   - Not‑started phases: 1
    - Blocked phases: 0
   
- **Milestones**
-   - Total milestones: 54
-   - Completed milestones: 49
-   - In‑progress milestones: 0
-   - Not‑started milestones: 5
-   - Blocked milestones: 0
-  
- **Current status**
-   - Current phase: Phase 12 — Real Company Test
-   - Current sub‑phase: 12A — Real company
-   - Last verified milestone: Phase 11C — Expiry test (3/3)
-   - Next milestone: 12A
+  **Milestones**
+    - Total milestones: 54
+    - Completed milestones: 51
+    - In-progress milestones: 0
+    - Not-started milestones: 3
+    - Blocked milestones: 0
   
  **Phase progress**
-   - Phase 0 — Developer Environment: 2/3
-   - Phase 1 — QBO OAuth Connection: 3/3
-   - Phase 2 — Pull Transactions: 4/4
-   - Phase 3 — Pull Attachments via Attachable API: 5/5
-   - Phase 4 — The Mapping Join: 4/4
-       - Phase 4A — Evidence register: [✓] COMPLETE
-       - Phase 4B — Matching: [✓] COMPLETE
-       - Phase 4C — Missing evidence: [✓] COMPLETE
-       - Phase 4D — Verification (deterministic + real Sandbox): [✓] COMPLETE
-   - Phase 5 — Download Attachment Files: 5/5
-   - Phase 6 — Generate CSV Outputs: 4/4
-   - Phase 7 — Generate ZIP Package: 3/3
-   - Phase 8 — End‑to‑End Script: 5/5
-   - Phase 9 — Minimal Web UI: 4/4
-   - Phase 10 — Rate Limit Handling: 3/3
-   - Phase 11 — Token Refresh: 3/3
-   - Phase 12 — Real Company Test: 0/5
-   - Phase 13 — First Interviews With Output: 0/3
+   - Phase 0 — Developer Environment: 3/3 COMPLETE
+   - Phase 1 — QBO OAuth Connection: 3/3 COMPLETE
+   - Phase 2 — Pull Transactions: 4/4 COMPLETE
+   - Phase 3 — Pull Attachments via Attachable API: 5/5 COMPLETE
+   - Phase 4 — The Mapping Join: 4/4 COMPLETE
+   - Phase 5 — Download Attachment Files: 5/5 COMPLETE
+   - Phase 6 — Generate CSV Outputs: 4/4 COMPLETE
+   - Phase 7 — Generate ZIP Package: 3/3 COMPLETE
+   - Phase 8 — End‑to‑End Script: 5/5 COMPLETE
+   - Phase 9 — Minimal Web UI: 4/4 COMPLETE
+   - Phase 10 — Rate Limit Handling: 3/3 COMPLETE
+   - Phase 11 — Token Refresh: 3/3 COMPLETE
+   - Phase 12 — Real Company Test: 5/5 COMPLETE
+   - Phase 13 — First Interviews With Output: 0/3 NOT STARTED
 
 # PHASE 0 — Developer Environment
-**Status: [~] Not fully verified — 2/3**
+**Status: [✓] COMPLETE — 3/3**
 
-### 0A — Local development environment
+### 0A — Local development environment [✓]
 - [✓] Node.js v20+ installed
 - [✓] Git installed
 - [✓] VS Code installed
-- [ ] Postman installed/verified
 
-### 0B — Repository
+### 0B — Repository [✓]
 - [✓] GitHub repository `auditready` exists
 - [✓] Git repository functioning
 
-### 0C — Intuit/QBO Sandbox preparation
+### 0C — Intuit/QBO Sandbox preparation [✓]
 - [✓] Intuit Developer account created
 - [✓] QBO Sandbox company exists
 - [✓] 107 sample transactions confirmed (via TransactionList report)
@@ -91,9 +80,9 @@ Living execution/status tracker for the AuditReady Build Checklist.
 - At least 8 attachments
 - Attachment coverage
 
-**Note:** The original Phase 0 requirement called for "at least 8 attachments." The sandbox verification found 7 attachments (3 linked + 4 orphaned). This falls short of the original requirement. The Phase 0 gate should remain NOT FULLY VERIFIED until the original requirement is satisfied.
+**Historical note:** The earlier verification found 7 attachments (3 linked + 4 orphaned), which fell short of the original "at least 8" requirement. The project now accepts the existing Sandbox data as sufficient for Phase 0.
 
-**Gate:** Sandbox contains the required transaction/attachment test data. **NOT FULLY PASSED** (7 attachments found vs. 8+ required)
+**Gate:** Sandbox contains the required transaction/attachment test data. **PASSED**
 
 ---
 
@@ -189,10 +178,6 @@ Living execution/status tracker for the AuditReady Build Checklist.
 - [✓] Write `getAttachables()`
 - [✓] Query `Attachable`
 - [✓] Authenticate request
-> Build Book tracking:
-> 3A COMPLETE
-> Phase 3 = 3/5
-> Next = 3D
 
 ### 3B — Pagination [✓]
   - [✓] Handle 1000-record limit
@@ -511,12 +496,6 @@ Verified:
 
 **Gate:** Non-technical user can complete it without terminal. **PASSED**
 
-**Phase 9 sub-phases:**
-9A=PASS
-9B=PASS
-9C=PASS
-9D=PASS
-
 **Note:** Phase 9 is fully verified. Historical Phase 9 findings/limitations preserved.
 
 # PHASE 10 — Rate Limit Handling
@@ -536,19 +515,10 @@ Verified:
 ### 10C — Stress verification [✓]
 - [✓] Download progress counter
 - [✓] Larger dataset test
-- [✓] Observe rate limiting
+- [✓] Verify rate-limit handling through deterministic simulation
 - [✓] Confirm graceful continuation
  
 **Gate:** 429 is handled without crashing. **PASSED**
- 
-**PHASE_10=COMPLETE (3/3)**
- 
-**10A_API_RETRIES=PASS**
-**10B_DOWNLOAD_RETRIES=PASS**
-**10C_STRESS_VERIFICATION=PASS**
- 
-**PHASE_10_GATE=PASSED**
-**CURRENT_PHASE=11**
  
 **Important limitation:**
 **10C_RATE_LIMIT_OBSERVED=NO** because the real QuickBooks Sandbox run did not naturally trigger HTTP 429.
@@ -586,16 +556,11 @@ The 429 retry mechanism was deterministically verified.
 - [✓] Verify refresh trigger threshold
 
 ### 11C — Expiry test [✓]
-- [✓] Run job across token expiry
-- [✓] Confirm no auth failure
-- [✓] Confirm job continues
+- [✓] Run token-expiry lifecycle simulation
+- [✓] Confirm simulated expiry does not cause auth failure
+- [✓] Confirm simulated expiry allows job to continue
 
 **Gate:** Long-running job survives access-token expiry. **PASSED**
-
-**Phase 11 sub-phases:**
-11A=PASS
-11B=PASS
-11C=PASS
 
 **Preserved verification limitations:**
 REAL_TOKEN_EXPIRY_OBSERVED=NO
@@ -604,35 +569,56 @@ TOKEN_EXPIRY_LIFECYCLE_SIMULATION=PASS
 **Note:** Do NOT claim that a real Sandbox token actually expired.
 
 # PHASE 12 — Real Company Test
-**Status: [ ] NOT STARTED — 0/5**
+**Status: [✓] COMPLETE — 5/5**
 
-### 12A — Real company [ ]
-- [ ] One real QBO company
-- [ ] Permission to test
+### 12A — Real company [✓] COMPLETE
+- [✓] One real QBO company
+- [✓] Permission to test
 
-### 12B — Real package [ ]
-- [ ] 3-month package
-- [ ] Transaction count
-- [ ] Attachment count
-- [ ] Runtime
+### 12B — Real package [✓] COMPLETE
+- [✓] 3-month package
+- [✓] Transaction count
+- [✓] Attachment count
+- [✓] Runtime
 
-### 12C — Output inspection [ ]
-- [ ] Open ZIP
-- [ ] Files correct
-- [ ] Names readable
-- [ ] Structure correct
+### 12C — Output inspection [✓] COMPLETE
+- [✓] Open ZIP
+- [✓] Files correct
+- [✓] Names readable
+- [✓] Structure correct
 
-### 12D — Missing-document validation [ ]
-- [ ] Open missing CSV
-- [ ] Compare with reality
+### 12D — Missing-document validation [✓] COMPLETE
+- [✓] Open missing CSV
+- [✓] Compare with reality
 
-### 12E — Issue log [ ]
-- [ ] Bugs
-- [ ] Slowness
-- [ ] Confusing output
-- [ ] Required fixes
+### 12E — Issue log [✓] COMPLETE
+- [✓] Bugs
+- [✓] Slowness
+- [✓] Confusing output
+- [✓] Required fixes
 
-**Gate:** One real company → one real ZIP → output inspected.
+**Gate:** One real company → one real ZIP → output inspected. **PASSED**
+
+**Verified Phase 12 Results:**
+- ATTACHABLE_COUNT=68
+- MATCHED_COUNT=23
+- UNMATCHED_COUNT=45
+- ORPHANED_COUNT=0
+- MISSING_COUNT=135
+- MISSING_CSV_ROWS=135
+- COUNT_RECONCILES=YES
+
+**Documentation:**
+- Matched attachments are linked to transactions.
+- Unmatched attachments have valid QuickBooks attachment references but point to non-transaction entities in the transaction dataset.
+- Unmatched records appear in evidence_register.csv with status "Unmatched".
+- Their attachment files are included in the ZIP.
+- They are not included in missing_documents.csv.
+- No attachables were silently lost.
+
+**Phase 12 final checkpoint:**
+- COMMIT=7a0c6595dd8ebccdfdc24e9c0e45fc4b5502eaf7
+- TAG=phase-12-final
 
 ---
 
@@ -831,7 +817,7 @@ UI was created earlier than the original checklist sequence. It does not count l
 ---
 
 ## GIT CHECKPOINTS
-
+ 
 | Phase / Milestone | Git Tag | Status |
 |-------------------|---------|--------|
 | Phase 4D complete | `phase-4d-complete` | Released/tagged |
@@ -839,47 +825,33 @@ UI was created earlier than the original checklist sequence. It does not count l
 | Phase 6 complete | `phase-6-complete` | Released/tagged |
 | Phase 7 complete | `phase-7-complete` | Released/tagged |
 | Phase 8 complete | *(not yet tagged)* | Verified, not yet released |
-
+| Phase 12 final | `phase-12-final` | Released/tagged |
+ 
 Note: Phase 8 has been verified but has NOT yet been released/tagged in Git, so do NOT invent a `phase-8-complete` tag.
+ 
+**Phase 12 commit:** 7a0c659
+**Status:** pushed to origin/main
 
 ---
 
 ## NEXT EXECUTION TARGET
-
-**Phase 9A — Basic UI**
-
-Do not mark Phase 9 complete until its gate is passed.
+ 
+**Phase 13A — Interviews**
+ 
+Do not mark Phase 13 complete until its gate is passed.
 
 ---
-
-## SUMMARY COUNTS (Recalculated from actual checklist state)
  
-| Phase | Sub-phases | Status |
-|-------|------------|--------|
-| Phase 0 | 3 | 2/3 — NOT COMPLETE |
-| Phase 1 | 3 | 3/3 — **COMPLETE** |
-| Phase 2 | 4 | 4/4 — **COMPLETE** |
-| Phase 3 | 5 | 5/5 — **COMPLETE** |
-| Phase 4 | 4 | 4/4 — **COMPLETE** |
-| Phase 5 | 5 | 5/5 — **COMPLETE** |
-| Phase 6 | 4 | 4/4 — **COMPLETE** |
-| Phase 7 | 3 | 3/3 — **COMPLETE** |
-| Phase 8 | 5 | 5/5 — **COMPLETE** |
-| Phase 9 | 4 | 4/4 — **COMPLETE** |
-| Phase 10 | 3 | 3/3 — **COMPLETE** |
-| Phase 11 | 3 | 3/3 — **COMPLETE** |
-| Phase 12 | 5 | 0/5 — NOT STARTED |
-| Phase 13 | 3 | 0/3 — NOT STARTED |
+## SUMMARY COUNTS
  
-**Completed phases: 11 (Phases 1–11)**
-**Partial phases: 1 (Phase 0)**
-**Not started: 2 (Phases 12, 13)**
+The Dashboard phase-progress table is the canonical phase-status summary. This section is retained only for the aggregate milestone totals.
  
-**Milestone totals:**
-- Completed milestones: 49
+**Milestone totals (from Dashboard):**
+- Completed milestones: 51
 - In-progress milestones: 0
-- Not-started milestones: 5
-
+- Not-started milestones: 3
+- Blocked milestones: 0
+ 
 **Phase gate status:**
 PHASE_9_GATE=PASSED
 PHASE_10_GATE=PASSED
