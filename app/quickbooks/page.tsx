@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
+import { buildEvidenceRegister } from '@/lib/evidence';
 import styles from './page.module.css';
 
 interface CompanyInfo {
@@ -157,6 +158,24 @@ function AttachmentsIcon({ className, style, 'aria-hidden': ariaHidden, 'aria-la
   );
 }
 
+function LinkIcon({ className, style, 'aria-hidden': ariaHidden, 'aria-label': ariaLabel, ...props }: IconProps) {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} style={style} aria-hidden={ariaHidden} aria-label={ariaLabel} {...props}>
+      <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+      <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+    </svg>
+  );
+}
+
+function CopyIcon({ className, style, 'aria-hidden': ariaHidden, 'aria-label': ariaLabel, ...props }: IconProps) {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} style={style} aria-hidden={ariaHidden} aria-label={ariaLabel} {...props}>
+      <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+    </svg>
+  );
+}
+
 function SettingsIcon({ className, style, 'aria-hidden': ariaHidden, 'aria-label': ariaLabel, ...props }: IconProps) {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} style={style} aria-hidden={ariaHidden} aria-label={ariaLabel} {...props}>
@@ -249,6 +268,13 @@ export default function QuickbooksPage() {
   // Download state
   const [downloading, setDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
+
+  // Inbox state
+  const [inboxToken, setInboxToken] = useState<string | null>(null);
+  const [selectedTxnIds, setSelectedTxnIds] = useState<string[]>([]);
+  const [creatingRequest, setCreatingRequest] = useState(false);
+  const [requestError, setRequestError] = useState<string | null>(null);
+  const [copiedLink, setCopiedLink] = useState(false);
 
   // Settings modal
   const [showSettings, setShowSettings] = useState(false);
@@ -447,6 +473,63 @@ export default function QuickbooksPage() {
       setDownloadError(e.message);
     } finally {
       setDownloading(false);
+    }
+  };
+
+  // Handle Create Collection Request
+  const handleCreateRequest = async () => {
+    if (!realmId || selectedTxnIds.length === 0) return;
+
+    setCreatingRequest(true);
+    setRequestError(null);
+
+    try {
+      const res = await fetch('/api/firm/inbox', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ realm_id: realmId, transaction_ids: selectedTxnIds }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to create collection request');
+      }
+
+      setInboxToken(data.token);
+      setCopiedLink(false);
+    } catch (e: any) {
+      setRequestError(e.message);
+    } finally {
+      setCreatingRequest(false);
+    }
+  };
+
+  // Handle Copy Inbox Link
+  const handleCopyLink = async () => {
+    if (!inboxToken) return;
+    
+    const link = `${window.location.origin}/inbox/${inboxToken}`;
+    await navigator.clipboard.writeText(link);
+    setCopiedLink(true);
+    setTimeout(() => setCopiedLink(false), 2000);
+  };
+
+  // Handle Transaction Selection
+  const handleTxnSelect = (txnId: string, checked: boolean) => {
+    if (checked) {
+      setSelectedTxnIds(prev => [...prev, txnId]);
+    } else {
+      setSelectedTxnIds(prev => prev.filter(id => id !== txnId));
+    }
+  };
+
+  // Handle Select All
+  const handleSelectAll = (txnIds: string[], checked: boolean) => {
+    if (checked) {
+      setSelectedTxnIds(txnIds);
+    } else {
+      setSelectedTxnIds([]);
     }
   };
 
@@ -872,35 +955,174 @@ export default function QuickbooksPage() {
     </div>
   );
 
-  const renderMissing = () => (
-    <div className={styles.card}>
-      <h2 className={styles.cardTitle}>Missing Documents</h2>
+  const [missingTransactions, setMissingTransactions] = useState<any[]>([]);
+  const [fetchingMissing, setFetchingMissing] = useState(false);
 
-      {generationResult?.success && generationResult.stats && generationResult.stats.missingCount > 0 ? (
-        <div className={styles.notice}>
-          <p>The missing documents report is included in the generated package as <code>missing_documents.csv</code>.</p>
-          <p>Total missing: <strong>{generationResult.stats.missingCount}</strong></p>
-          <p>Fields included:</p>
-          <ul className={styles.fieldList}>
-            <li><strong>Date</strong> — Transaction date</li>
-            <li><strong>Transaction Type</strong> — Type of transaction</li>
-            <li><strong>Doc Number</strong> — Document/reference number</li>
-            <li><strong>Vendor/Customer</strong> — Counterparty name</li>
-            <li><strong>Amount</strong> — Transaction amount</li>
-            <li><strong>Missing Since</strong> — Date the transaction was created (no attachment)</li>
-          </ul>
-          <p className={styles.noticeHint}>Download the package to access the full missing documents report.</p>
-        </div>
-      ) : generationResult?.success ? (
-        <div className={styles.notice + ' ' + styles.success}>
-          <CheckIcon style={{ marginRight: 'var(--space-2)', verticalAlign: 'middle' }} />
-          No missing documents found for this period.
-        </div>
-      ) : (
-        <p className={styles.notGenerated}>Generate a package to view missing document details.</p>
-      )}
-    </div>
-  );
+  const fetchMissingTransactions = useCallback(async () => {
+    if (!generationResult?.success || !realmId) return;
+    
+    setFetchingMissing(true);
+    try {
+      const res = await fetch(`/api/evidence/register?startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`);
+      if (res.ok) {
+        const register = await res.json();
+        const missing = register.filter((r: any) => r.hasAttachment === false && r.txnId);
+        setMissingTransactions(missing);
+      }
+    } catch (e) {
+      console.error('Failed to fetch missing transactions:', e);
+    } finally {
+      setFetchingMissing(false);
+    }
+  }, [generationResult?.success, realmId, startDate, endDate]);
+
+  // Fetch missing transactions when generation completes
+  useEffect(() => {
+    if (generationResult?.success) {
+      fetchMissingTransactions();
+    }
+  }, [fetchMissingTransactions]);
+
+  const renderMissing = () => {
+
+    return (
+      <div className={styles.card}>
+        <h2 className={styles.cardTitle}>Missing Documents</h2>
+
+        {generationResult?.success && generationResult.stats && generationResult.stats.missingCount > 0 ? (
+          <>
+            <div className={styles.notice}>
+              <p>The missing documents report is included in the generated package as <code>missing_documents.csv</code>.</p>
+              <p>Total missing: <strong>{generationResult.stats.missingCount}</strong></p>
+              <p>Fields included:</p>
+              <ul className={styles.fieldList}>
+                <li><strong>Date</strong> — Transaction date</li>
+                <li><strong>Transaction Type</strong> — Type of transaction</li>
+                <li><strong>Doc Number</strong> — Document/reference number</li>
+                <li><strong>Vendor/Customer</strong> — Counterparty name</li>
+                <li><strong>Amount</strong> — Transaction amount</li>
+                <li><strong>Missing Since</strong> — Date the transaction was created (no attachment)</li>
+              </ul>
+              <p className={styles.noticeHint}>Download the package to access the full missing documents report.</p>
+            </div>
+
+            {/* Collection Request Section */}
+            <div className={styles.inboxSection}>
+              <h3 className={styles.inboxSectionTitle}>
+                <MissingIcon style={{ marginRight: 'var(--space-2)', verticalAlign: 'middle' }} />
+                Create Collection Request
+              </h3>
+              <p className={styles.inboxSectionDesc}>
+                Select one or more missing transactions to request documents from your client. 
+                A permanent inbox link will be created for this company.
+              </p>
+
+              {/* Transaction Selection Table */}
+              {missingTransactions.length > 0 && (
+                <div className={styles.selectionTable}>
+                  <div className={styles.tableHeader}>
+                    <label className={styles.selectAllLabel}>
+                      <input
+                        type="checkbox"
+                        checked={selectedTxnIds.length === missingTransactions.length && missingTransactions.length > 0}
+                        onChange={(e) => handleSelectAll(missingTransactions.map((t: any) => t.txnId), e.target.checked)}
+                        disabled={creatingRequest}
+                      />
+                      Select All ({missingTransactions.length})
+                    </label>
+                  </div>
+                  <div className={styles.tableRows}>
+                    {missingTransactions.map((txn: any) => (
+                      <label key={txn.txnId} className={styles.txnRow}>
+                        <input
+                          type="checkbox"
+                          checked={selectedTxnIds.includes(txn.txnId)}
+                          onChange={(e) => handleTxnSelect(txn.txnId, e.target.checked)}
+                          disabled={creatingRequest}
+                        />
+                        <div className={styles.txnInfo}>
+                          <span className={styles.txnType}>{txn.txnType}</span>
+                          <span className={styles.txnDocNumber}>{txn.docNumber}</span>
+                          <span className={styles.txnDate}>{txn.date}</span>
+                          <span className={styles.txnVendor}>{txn.vendor}</span>
+                          <span className={styles.txnAmount}>{txn.amount}</span>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className={styles.inboxActions}>
+                {inboxToken ? (
+                  <div className={styles.inboxLinkCreated}>
+                    <div className={styles.linkDisplay}>
+                      <LinkIcon style={{ marginRight: 'var(--space-2)', verticalAlign: 'middle' }} />
+                      <code className={styles.linkCode}>
+                        {window.location.origin}/inbox/{inboxToken}
+                      </code>
+                    </div>
+                    <button
+                      className={styles.btn + ' ' + styles.btnSecondary}
+                      onClick={handleCopyLink}
+                      disabled={creatingRequest}
+                    >
+                      {copiedLink ? (
+                        <>
+                          <CheckIcon style={{ marginRight: 'var(--space-2)' }} />
+                          Copied!
+                        </>
+                      ) : (
+                        <>
+                          <CopyIcon style={{ marginRight: 'var(--space-2)' }} />
+                          Copy Link
+                        </>
+                      )}
+                    </button>
+                    <p className={styles.linkNote}>
+                      This link is permanent for this company. Share it with your client to collect documents.
+                    </p>
+                  </div>
+                ) : (
+                  <button
+                    className={styles.btn + ' ' + styles.btnPrimary + ' ' + styles.btnLg}
+                    onClick={handleCreateRequest}
+                    disabled={creatingRequest || selectedTxnIds.length === 0 || !realmId}
+                  >
+                    {creatingRequest ? (
+                      <>
+                        <SpinnerIcon style={{ marginRight: 'var(--space-2)' }} />
+                        Creating Request...
+                      </>
+                    ) : (
+                      <>
+                        <LinkIcon style={{ marginRight: 'var(--space-2)' }} />
+                        Create Request ({selectedTxnIds.length} selected)
+                      </>
+                    )}
+                  </button>
+                )}
+
+                {requestError && (
+                  <div className={styles.requestError}>
+                    <AlertIcon /> {requestError}
+                  </div>
+                )}
+              </div>
+            </div>
+          </>
+        ) : generationResult?.success ? (
+          <div className={styles.notice + ' ' + styles.success}>
+            <CheckIcon style={{ marginRight: 'var(--space-2)', verticalAlign: 'middle' }} />
+            No missing documents found for this period.
+          </div>
+        ) : (
+          <p className={styles.notGenerated}>Generate a package to view missing document details.</p>
+        )}
+      </div>
+    );
+  };
 
   const renderAttachments = () => (
     <div className={styles.card}>
