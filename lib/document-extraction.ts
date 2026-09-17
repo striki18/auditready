@@ -32,6 +32,27 @@ export interface QBOTransaction {
   docNumber: string | null;
 }
 
+export interface FieldComparisonDetail {
+  fieldName: string;
+  documentValue: string | number | null;
+  transactionValue: string | number | null;
+  match: boolean;
+  similarity?: number; // For vendor name (Jaccard similarity)
+  difference?: number; // For amount/date (absolute difference)
+}
+
+export interface CandidateMatchDetail {
+  transactionId: string;
+  confidence: number; // 0-100
+  fieldComparisons: FieldComparisonDetail[];
+  signals: {
+    vendorMatch: boolean;
+    amountMatch: boolean;
+    dateMatch: boolean;
+    documentNumberMatch: boolean;
+  };
+}
+
 export interface MatchResult {
   documentId: string;
   transactionId: string | null;
@@ -45,6 +66,7 @@ export interface MatchResult {
   status: 'matched' | 'no_match' | 'multiple_candidates';
   matchedTransaction?: QBOTransaction;
   allCandidates?: QBOTransaction[];
+  candidateDetails?: CandidateMatchDetail[];
 }
 
 export interface CollectionRequestWithTransactions {
@@ -341,11 +363,12 @@ export async function getCollectionRequestWithTransactions(
 
 /**
  * Calculate match confidence between extracted document and QBO transaction
+ * Also returns field-level comparison details
  */
 export function calculateMatchConfidence(
   docFields: ExtractedDocumentFields,
   transaction: QBOTransaction
-): { confidence: number; signals: MatchResult['matchSignals'] } {
+): { confidence: number; signals: MatchResult['matchSignals']; fieldComparisons: FieldComparisonDetail[] } {
   let score = 0;
   const signals = {
     vendorMatch: false,
@@ -353,26 +376,58 @@ export function calculateMatchConfidence(
     dateMatch: false,
     documentNumberMatch: false,
   };
+  const fieldComparisons: FieldComparisonDetail[] = [];
 
   // Vendor name match (30 points)
   if (docFields.vendorName && transaction.vendor) {
     const similarity = stringSimilarity(docFields.vendorName.toLowerCase(), transaction.vendor.toLowerCase());
-    if (similarity > 0.8) {
+    const match = similarity > 0.8;
+    if (match) {
       signals.vendorMatch = true;
       score += 30;
     } else if (similarity > 0.5) {
       score += 15; // Partial match
     }
+    fieldComparisons.push({
+      fieldName: 'vendorName',
+      documentValue: docFields.vendorName,
+      transactionValue: transaction.vendor,
+      match,
+      similarity,
+    });
+  } else {
+    fieldComparisons.push({
+      fieldName: 'vendorName',
+      documentValue: docFields.vendorName,
+      transactionValue: transaction.vendor,
+      match: false,
+    });
   }
 
   // Amount match (30 points) - exact match within 0.01
   if (docFields.totalAmount !== null && transaction.amount !== null) {
-    if (Math.abs(docFields.totalAmount - transaction.amount) < 0.01) {
+    const difference = Math.abs(docFields.totalAmount - transaction.amount);
+    const match = difference < 0.01;
+    if (match) {
       signals.amountMatch = true;
       score += 30;
-    } else if (Math.abs(docFields.totalAmount - transaction.amount) < 1.00) {
+    } else if (difference < 1.00) {
       score += 15; // Close match
     }
+    fieldComparisons.push({
+      fieldName: 'totalAmount',
+      documentValue: docFields.totalAmount,
+      transactionValue: transaction.amount,
+      match,
+      difference,
+    });
+  } else {
+    fieldComparisons.push({
+      fieldName: 'totalAmount',
+      documentValue: docFields.totalAmount,
+      transactionValue: transaction.amount,
+      match: false,
+    });
   }
 
   // Date match (20 points) - within 3 days
@@ -381,7 +436,8 @@ export function calculateMatchConfidence(
     const txnDate = new Date(transaction.date);
     const diffDays = Math.abs((docDate.getTime() - txnDate.getTime()) / (1000 * 60 * 60 * 24));
     
-    if (diffDays <= 1) {
+    const match = diffDays <= 1;
+    if (match) {
       signals.dateMatch = true;
       score += 20;
     } else if (diffDays <= 3) {
@@ -389,20 +445,49 @@ export function calculateMatchConfidence(
     } else if (diffDays <= 7) {
       score += 5;
     }
+    fieldComparisons.push({
+      fieldName: 'documentDate',
+      documentValue: docFields.documentDate,
+      transactionValue: transaction.date,
+      match,
+      difference: diffDays,
+    });
+  } else {
+    fieldComparisons.push({
+      fieldName: 'documentDate',
+      documentValue: docFields.documentDate,
+      transactionValue: transaction.date,
+      match: false,
+    });
   }
 
   // Document number match (20 points)
   if (docFields.documentNumber && transaction.docNumber) {
-    if (docFields.documentNumber.toLowerCase() === transaction.docNumber.toLowerCase()) {
+    const docNumLower = docFields.documentNumber.toLowerCase();
+    const txnNumLower = transaction.docNumber.toLowerCase();
+    const match = docNumLower === txnNumLower;
+    if (match) {
       signals.documentNumberMatch = true;
       score += 20;
-    } else if (docFields.documentNumber.toLowerCase().includes(transaction.docNumber.toLowerCase()) ||
-               transaction.docNumber.toLowerCase().includes(docFields.documentNumber.toLowerCase())) {
+    } else if (docNumLower.includes(txnNumLower) || txnNumLower.includes(docNumLower)) {
       score += 10;
     }
+    fieldComparisons.push({
+      fieldName: 'documentNumber',
+      documentValue: docFields.documentNumber,
+      transactionValue: transaction.docNumber,
+      match,
+    });
+  } else {
+    fieldComparisons.push({
+      fieldName: 'documentNumber',
+      documentValue: docFields.documentNumber,
+      transactionValue: transaction.docNumber,
+      match: false,
+    });
   }
 
-  return { confidence: Math.min(score, 100), signals };
+  return { confidence: Math.min(score, 100), signals, fieldComparisons };
 }
 
 /**
@@ -431,8 +516,8 @@ export async function matchDocumentToTransactions(
   }
 
   const results = request.transactions.map(txn => {
-    const { confidence, signals } = calculateMatchConfidence(docFields, txn);
-    return { transaction: txn, confidence, signals };
+    const { confidence, signals, fieldComparisons } = calculateMatchConfidence(docFields, txn);
+    return { transaction: txn, confidence, signals, fieldComparisons };
   });
 
   // Sort by confidence descending
@@ -443,6 +528,14 @@ export async function matchDocumentToTransactions(
   // Check for multiple high-confidence candidates
   const highConfidenceCount = results.filter(r => r.confidence >= 70).length;
 
+  // Build candidate details with field-level comparisons
+  const candidateDetails: CandidateMatchDetail[] = results.map(r => ({
+    transactionId: r.transaction.txnId,
+    confidence: r.confidence,
+    fieldComparisons: r.fieldComparisons,
+    signals: r.signals,
+  }));
+
   if (bestMatch.confidence >= 70 && highConfidenceCount === 1) {
     return {
       documentId,
@@ -452,6 +545,7 @@ export async function matchDocumentToTransactions(
       status: 'matched',
       matchedTransaction: bestMatch.transaction,
       allCandidates: results.map(r => r.transaction),
+      candidateDetails,
     };
   } else if (bestMatch.confidence >= 70 && highConfidenceCount > 1) {
     return {
@@ -461,6 +555,7 @@ export async function matchDocumentToTransactions(
       matchSignals: bestMatch.signals,
       status: 'multiple_candidates',
       allCandidates: results.map(r => r.transaction),
+      candidateDetails,
     };
   } else {
     return {
@@ -470,6 +565,7 @@ export async function matchDocumentToTransactions(
       matchSignals: bestMatch.signals,
       status: 'no_match',
       allCandidates: results.map(r => r.transaction),
+      candidateDetails,
     };
   }
 }
@@ -516,6 +612,7 @@ export async function processInboxDocument(
       match_status: matchResult.status,
       match_confidence: matchResult.confidence,
       matched_transaction_id: matchResult.transactionId,
+      match_field_details: matchResult.candidateDetails || null,
       processed_at: new Date().toISOString(),
     })
     .eq('id', documentId);
@@ -556,8 +653,8 @@ export async function processCollectionRequestDocuments(
     try {
       const result = await processInboxDocument(doc.id, collectionRequestId);
       results.push(result);
-    } catch (e: any) {
-      console.error(`Failed to process document ${doc.id}:`, e.message);
+    } catch (e) {
+      console.error(`Failed to process document ${doc.id}:`, e instanceof Error ? e.message : String(e));
       results.push({
         documentId: doc.id,
         transactionId: null,

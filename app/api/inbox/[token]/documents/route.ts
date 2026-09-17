@@ -105,6 +105,7 @@ export async function GET(
         .from('inbox_documents')
         .select('*')
         .eq('realm_id', inbox.realm_id)
+        .like('storage_path', `inbox/${inbox.realm_id}/${token}/%`)
         .order('uploaded_at', { ascending: false });
 
       if (error) {

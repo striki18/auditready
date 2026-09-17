@@ -121,7 +121,12 @@ export async function getCompanyInfo() {
   console.log('  token found:', tokenFound);
   console.log('  token expired:', tokenExpired);
 
+  // Timing: getAccessToken()
+  const tokenStart = Date.now();
   const accessToken = await getAccessToken();
+  const tokenDuration = Date.now() - tokenStart;
+  console.log('⏱️  getAccessToken duration:', tokenDuration, 'ms');
+
   const realmId = stored?.realm_id || process.env.INTUIT_REALM_ID;
   if (!realmId) throw new Error('Realm ID not available');
 
@@ -150,12 +155,17 @@ export async function getCompanyInfo() {
   // API requires the realmId twice in the path for CompanyInfo.
   const url = `${baseDomain}/v3/company/${realmId}/companyinfo/${realmId}`;
 
+  // Timing: CompanyInfo API fetch
+  const apiStart = Date.now();
   const res = await fetch(url, {
     headers: {
       Authorization: `Bearer ${accessToken}`,
       Accept: 'application/json',
     },
   });
+  const apiDuration = Date.now() - apiStart;
+  console.log('⏱️  CompanyInfo API duration:', apiDuration, 'ms');
+
   console.log('  QuickBooks response status:', res.status);
   if (!res.ok) {
     const errBody = await res.text();
@@ -243,7 +253,7 @@ export async function getTransactionReport(startDate: string, endDate: string) {
  * the earlier 403 error was caused by an incorrect request (missing dates
  * or using the Invoice query fallback). The debug route proved the request
  * works when built correctly.
- * 
+ *
  * Phase 10A: Wrapped with retry logic for HTTP 429 rate limiting.
  */
 export async function getTransactions(startDate: string, endDate: string) {
@@ -314,7 +324,7 @@ export async function getTransactions(startDate: string, endDate: string) {
  *
  * The function retains the existing authentication flow (`getAccessToken` and
  * `getStoredToken`). No other parts of Phase 3A are altered.
- * 
+ *
  * Phase 10A: Wrapped with retry logic for HTTP 429 rate limiting.
  */
 export async function getAttachables() {
@@ -395,7 +405,7 @@ export async function getAttachables() {
  * @param destFolder - The destination folder path
  * @param failed - Optional array to collect failure details for Phase 5C
  * @returns Object with success status, file path, and any error message
- * 
+ *
  * Phase 10B: Network/connection failures are retried up to 3 times with 5-second wait.
  */
 export interface DownloadFileResult {
@@ -500,7 +510,7 @@ export async function downloadFile(
 
 /**
  * Progress callback for download operations.
- * 
+ *
  * Phase 10C: Provides real-time progress information during bulk downloads.
  */
 export interface DownloadProgress {
@@ -514,20 +524,20 @@ export interface DownloadProgress {
 
 /**
  * Bulk download all attachments from matched evidence-register records.
- * 
+ *
  * @param matched - Array of matched evidence-register records (from buildEvidenceRegister)
  * @param startDate - Start date for the query (used for logging)
  * @param endDate - End date for the query (used for logging)
  * @param onProgress - Optional callback for progress updates (Phase 10C)
  * @returns Object with successful downloads, failed downloads, and counts
- * 
+ *
  * Phase 5D: Implements bulk download with failure collection.
  * - Reuses downloadFile() for each attachment
  * - Reuses Phase 5B storage and filename behavior
  * - Continues on individual failures
  * - Collects failures in failed[] array
  * - Returns deterministic results
- * 
+ *
  * Phase 10C: Adds progress counter with real-time updates.
  */
 export async function downloadAllAttachments(
@@ -556,10 +566,10 @@ export async function downloadAllAttachments(
 }> {
   const fs = await import('fs');
   const path = await import('path');
-  
+
   // Destination folder (project root / attachments) - Phase 5B behavior
   const destFolder = path.join(process.cwd(), 'attachments');
-  
+
   // Ensure destination folder exists
   if (!fs.existsSync(destFolder)) {
     fs.mkdirSync(destFolder, { recursive: true });
@@ -576,7 +586,7 @@ export async function downloadAllAttachments(
     filePath: string;
     fileSize: number;
   }> = [];
-  
+
   const failed: Array<{
     attachableId: string | null;
     fileName: string;
@@ -587,12 +597,12 @@ export async function downloadAllAttachments(
   // Filter to only records with attachments
   const attachmentsToDownload = matched.filter(m => m.hasAttachment);
   const totalAttachments = attachmentsToDownload.length;
-  
+
   // Progress tracking
   let completed = 0;
   let successfulCount = 0;
   let failedCount = 0;
-  
+
   const emitProgress = (stage: DownloadProgress['stage'], currentFile?: string) => {
     if (onProgress) {
       onProgress({
@@ -615,7 +625,7 @@ export async function downloadAllAttachments(
       console.log(`[downloadAllAttachments] Failed: ${completed}/${totalAttachments} (Successful: ${successfulCount}, Failed: ${failedCount})`);
     }
   };
-  
+
   emitProgress('started');
 
   for (const record of attachmentsToDownload) {
@@ -657,7 +667,7 @@ export async function downloadAllAttachments(
         const stats = fs.statSync(result.filePath);
         fileSize = stats.size;
       }
-      
+
       successful.push({
         attachableId,
         fileName: newFileName,
@@ -839,4 +849,133 @@ export function normalizeAttachables(raw: any): any[] {
     }
   }
   return normalized;
+}
+
+/**
+ * Upload an attachable file to QuickBooks Online.
+ *
+ * Uses the QBO upload endpoint:
+ *   POST /v3/company/{realmId}/upload
+ *
+ * The request must be multipart/form-data containing:
+ *   - file: the file bytes with filename and content type
+ *   - AttachableRef: JSON metadata including EntityRef (entityType, entityId)
+ *
+ * @param fileBytes - The file content as Uint8Array or Buffer
+ * @param filename - Original filename
+ * @param contentType - MIME type (e.g., 'application/pdf', 'image/png')
+ * @param entityType - QuickBooks entity type (e.g., 'Invoice', 'Bill', 'PurchaseOrder')
+ * @param entityId - QuickBooks entity ID to attach the file to
+ * @returns The QBO Attachable response
+ *
+ * Phase 10A: Wrapped with retry logic for HTTP 429 rate limiting.
+ */
+export interface UploadAttachableResult {
+  attachable: any;
+  time: string;
+}
+
+export async function uploadAttachable(
+  fileBytes: Uint8Array | Buffer,
+  filename: string,
+  contentType: string,
+  entityType: string,
+  entityId: string
+): Promise<UploadAttachableResult> {
+  return withApiRetry(async () => {
+    // 1. Get valid access token (handles refresh automatically)
+    const accessToken = await getAccessToken();
+
+    // 2. Resolve realm ID
+    const stored = await getStoredToken();
+    const realmId = stored?.realm_id || process.env.INTUIT_REALM_ID;
+    if (!realmId) throw new Error('Realm ID not available');
+
+    // 3. Build the upload URL using the sandbox domain
+    const sandboxDomain = 'https://sandbox-quickbooks.api.intuit.com';
+    const uploadUrl = `${sandboxDomain}/v3/company/${realmId}/upload`;
+
+    // 4. Create multipart form data in the QBO upload format.
+    //    Part names are zero-indexed: file_metadata_0 (JSON) and file_content_0 (binary).
+    const formData = new FormData();
+
+    // Add the file content part - convert Buffer/Uint8Array to ArrayBuffer for Blob
+    // Ensure we create a proper copy of the buffer
+    let fileArrayBuffer: ArrayBuffer;
+    if (fileBytes instanceof Buffer) {
+      const buf = fileBytes.buffer.slice(fileBytes.byteOffset, fileBytes.byteOffset + fileBytes.byteLength);
+      fileArrayBuffer = new ArrayBuffer(buf.byteLength);
+      new Uint8Array(fileArrayBuffer).set(new Uint8Array(buf));
+    } else if (fileBytes instanceof Uint8Array) {
+      const buf = fileBytes.buffer.slice(fileBytes.byteOffset, fileBytes.byteOffset + fileBytes.byteLength);
+      fileArrayBuffer = new ArrayBuffer(buf.byteLength);
+      new Uint8Array(fileArrayBuffer).set(new Uint8Array(buf));
+    } else {
+      fileArrayBuffer = fileBytes;
+    }
+    // Create a new Uint8Array to ensure we have a clean copy for Blob
+    const fileUint8Array = new Uint8Array(fileArrayBuffer);
+    const fileBlob = new Blob([fileUint8Array], { type: contentType });
+    formData.append('file_content_0', fileBlob, filename);
+
+    // Add the Attachable metadata JSON part (file_metadata_0)
+    const attachableMetadata = JSON.stringify({
+      AttachableRef: [
+        {
+          EntityRef: {
+            type: entityType,
+            value: entityId,
+          },
+          IncludeOnSend: false,
+        },
+      ],
+      FileName: filename,
+      ContentType: contentType,
+    });
+    // The metadata part must be sent with Content-Type: application/json.
+    // Appending a plain string would set it to text/plain, which QBO rejects.
+    formData.append('file_metadata_0', new Blob([attachableMetadata], { type: 'application/json' }));
+
+    // Debug: Log the exact Attachable metadata being sent
+    console.log('🔍 Attachable metadata being sent:', attachableMetadata);
+    console.log('🔍 FormData entries:');
+    for (const [key, value] of formData.entries()) {
+      if (value instanceof Blob) {
+        console.log(`  ${key}: Blob(size=${value.size}, type=${value.type})`);
+      } else {
+        console.log(`  ${key}: ${value}`);
+      }
+    }
+
+    console.log('🔍 Upload request URL:', uploadUrl);
+    console.log('🔍 Upload filename:', filename, 'contentType:', contentType);
+    console.log('🔍 Upload entityType:', entityType, 'entityId:', entityId);
+
+    // 5. Make the upload request with Bearer authorization
+    const res = await fetch(uploadUrl, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        Accept: 'application/json',
+        // Note: Do NOT set Content-Type header - let the browser/fetch set it with the boundary
+      },
+      body: formData,
+    });
+
+    console.log('🔍 Upload response status:', res.status);
+
+    if (!res.ok) {
+      const errBody = await res.text();
+      console.error('Failed to upload attachment:', res.status, errBody);
+      // Attach status for retry detection
+      const error = new Error(`Upload failed: ${res.status} ${errBody}`);
+      (error as any).status = res.status;
+      throw error;
+    }
+
+    const result = await res.json();
+    console.log('🔍 Upload successful:', JSON.stringify(result, null, 2));
+
+    return result;
+  });
 }

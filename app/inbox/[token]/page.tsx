@@ -29,11 +29,24 @@ export default function InboxPage({
   const [uploading, setUploading] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [dragActive, setDragActive] = useState(false);
+  const [token, setToken] = useState<string | null>(null);
 
   useEffect(() => {
+    let mounted = true;
+    const initToken = async () => {
+      const { token: resolvedToken } = await params;
+      if (mounted) {
+        setToken(resolvedToken);
+      }
+    };
+    initToken();
+    return () => { mounted = false; };
+  }, [params]);
+
+  useEffect(() => {
+    if (!token) return;
     const fetchInbox = async () => {
       try {
-        const { token } = await params;
         const res = await fetch(`/api/inbox/${token}`);
         if (!res.ok) {
           throw new Error('Inbox not found');
@@ -47,7 +60,27 @@ export default function InboxPage({
       }
     };
     fetchInbox();
-  }, [params]);
+  }, [token]);
+
+  useEffect(() => {
+    if (!token) return;
+    const fetchDocuments = async () => {
+      try {
+        const res = await fetch(`/api/inbox/${token}/documents`);
+        if (!res.ok) {
+          return;
+        }
+        const data = await res.json();
+        if (data.documents) {
+          setUploadedFiles(data.documents);
+        }
+      } catch (e) {
+        // Silently fail - documents are optional
+        console.error('Failed to fetch documents:', e);
+      }
+    };
+    fetchDocuments();
+  }, [token]);
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
