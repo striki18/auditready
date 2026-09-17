@@ -1,10 +1,32 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
+import { processInboxDocument } from '../../../../../lib/document-extraction';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
 const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+
+/**
+ * Find the most recent collection request for a realm so uploaded documents
+ * can be routed through the existing document-processing pipeline.
+ * Returns null when no collection request exists for the realm.
+ */
+async function findLatestCollectionRequest(realmId: string): Promise<string | null> {
+  const { data, error } = await supabaseAdmin
+    .from('collection_requests')
+    .select('id')
+    .eq('realm_id', realmId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .single();
+
+  if (error || !data) {
+    return null;
+  }
+
+  return data.id;
+}
 
 export async function POST(
   request: NextRequest,
@@ -68,6 +90,19 @@ export async function POST(
       if (docError) {
         console.error('Document insert error:', docError);
         return NextResponse.json({ error: 'Failed to save document metadata' }, { status: 500 });
+      }
+
+      // Trigger the document-processing pipeline for this upload.
+      // Extraction and matching results are persisted by processInboxDocument
+      // to the existing inbox_documents fields. Failures are non-fatal so the
+      // upload response and storage behavior are preserved.
+      try {
+        const collectionRequestId = await findLatestCollectionRequest(realmId);
+        if (collectionRequestId) {
+          await processInboxDocument(document.id, collectionRequestId);
+        }
+      } catch (err) {
+        console.error('Document processing error:', err);
       }
 
       uploadedDocuments.push(document);

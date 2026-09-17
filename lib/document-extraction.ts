@@ -188,11 +188,11 @@ export function extractFieldsFromText(text: string): ExtractedDocumentFields {
 
   // Amount patterns - prioritize explicit total labels in order of specificity
   const explicitTotalPatterns = [
-    { label: 'grand total', pattern: /grand total:\s*\$?([\d,]+\.?\d*)/i },
-    { label: 'total amount', pattern: /total amount:\s*\$?([\d,]+\.?\d*)/i },
-    { label: 'total', pattern: /total:\s*\$?([\d,]+\.?\d*)/i },
-    { label: 'amount due', pattern: /amount due:\s*\$?([\d,]+\.?\d*)/i },
-    { label: 'balance due', pattern: /balance due:\s*\$?([\d,]+\.?\d*)/i },
+    { label: 'grand total', pattern: /grand total:\s*\$?([\d,]+\.?\d*)/gi },
+    { label: 'total amount', pattern: /total amount:\s*\$?([\d,]+\.?\d*)/gi },
+    { label: 'total', pattern: /total:\s*\$?([\d,]+\.?\d*)/gi },
+    { label: 'amount due', pattern: /amount due:\s*\$?([\d,]+\.?\d*)/gi },
+    { label: 'balance due', pattern: /balance due:\s*\$?([\d,]+\.?\d*)/gi },
   ];
 
   // Try explicit patterns first, in priority order
@@ -232,7 +232,7 @@ export function extractFieldsFromText(text: string): ExtractedDocumentFields {
   // Document/Invoice number patterns
   const docNumberPatterns = [
     /(?:invoice\s*(?:#|no|number)|bill\s*(?:#|no|number)|document\s*(?:#|no|number)|ref|reference):\s*([A-Za-z0-9\-\/]+)/i,
-    /(?:inv|bill|doc)[\s\-]?#?\s*:?\s*([A-Za-z0-9\-\/]{3,})/i,
+    /(?:inv|bill|doc)\b[\s\-]?#?\s*:?\s*([A-Za-z0-9\-\/]{3,})/i,
     /\b(INV|BILL|DOC|INVOICE)[\-\/]?([A-Za-z0-9]{3,})\b/i,
   ];
 
@@ -526,7 +526,10 @@ export async function matchDocumentToTransactions(
   const bestMatch = results[0];
   
   // Check for multiple high-confidence candidates
-  const highConfidenceCount = results.filter(r => r.confidence >= 70).length;
+  // Auto-match requires confidence >= 90 with exactly one candidate at that level.
+  // Ambiguous requires top candidate >= 60 (but not qualifying as auto-match).
+  // No-match is below 60.
+  const highConfidenceCount = results.filter(r => r.confidence >= 90).length;
 
   // Build candidate details with field-level comparisons
   const candidateDetails: CandidateMatchDetail[] = results.map(r => ({
@@ -536,7 +539,7 @@ export async function matchDocumentToTransactions(
     signals: r.signals,
   }));
 
-  if (bestMatch.confidence >= 70 && highConfidenceCount === 1) {
+  if (bestMatch.confidence >= 90 && highConfidenceCount === 1) {
     return {
       documentId,
       transactionId: bestMatch.transaction.txnId,
@@ -547,7 +550,7 @@ export async function matchDocumentToTransactions(
       allCandidates: results.map(r => r.transaction),
       candidateDetails,
     };
-  } else if (bestMatch.confidence >= 70 && highConfidenceCount > 1) {
+  } else if (bestMatch.confidence >= 60) {
     return {
       documentId,
       transactionId: null,
