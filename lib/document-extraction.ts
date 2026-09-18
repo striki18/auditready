@@ -77,6 +77,35 @@ export interface CollectionRequestWithTransactions {
 }
 
 /**
+ * Find transaction IDs already claimed by previously matched documents
+ * in this realm. These transactions are considered resolved and must be
+ * excluded from future matching so new documents are evaluated only against
+ * the remaining unresolved transactions.
+ */
+export async function getClaimedTransactionIds(realmId: string): Promise<Set<string>> {
+  const claimed = new Set<string>();
+
+  const { data: matchedDocs, error } = await supabaseAdmin
+    .from('inbox_documents')
+    .select('matched_transaction_id')
+    .eq('realm_id', realmId)
+    .not('matched_transaction_id', 'is', null);
+
+  if (error) {
+    console.error('Failed to fetch claimed transaction IDs:', error.message);
+    return claimed;
+  }
+
+  for (const doc of matchedDocs || []) {
+    if (doc.matched_transaction_id) {
+      claimed.add(doc.matched_transaction_id);
+    }
+  }
+
+  return claimed;
+}
+
+/**
  * Simple string similarity (Jaccard index on bigrams)
  * Avoids Set iteration for ES2017 target compatibility
  */
@@ -491,16 +520,47 @@ export function calculateMatchConfidence(
 }
 
 /**
- * Match a document against all transactions in a collection request
+ * Match a document against a list of QBO transactions.
+ * If transactions are not provided, fetches them from the collection request (legacy behavior).
+ * If transactions ARE provided, they are assumed to be pre-filtered (no claimed transaction filtering).
  */
 export async function matchDocumentToTransactions(
   documentId: string,
   docFields: ExtractedDocumentFields,
-  collectionRequestId: string
+  collectionRequestId: string,
+  transactions?: QBOTransaction[],
+  realmId?: string
 ): Promise<MatchResult> {
-  const request = await getCollectionRequestWithTransactions(collectionRequestId);
-  
-  if (!request || request.transactions.length === 0) {
+  let txns = transactions;
+
+  // Legacy behavior: fetch from collection request if transactions not provided
+  if (!txns) {
+    const request = await getCollectionRequestWithTransactions(collectionRequestId);
+    
+    if (!request || request.transactions.length === 0) {
+      return {
+        documentId,
+        transactionId: null,
+        confidence: 0,
+        matchSignals: {
+          vendorMatch: false,
+          amountMatch: false,
+          dateMatch: false,
+          documentNumberMatch: false,
+        },
+        status: 'no_match',
+      };
+    }
+
+    // Filter out transactions already claimed by previously matched documents
+    // so this document is evaluated only against the remaining unresolved ones.
+    const claimedIds = await getClaimedTransactionIds(request.realmId);
+    txns = request.transactions.filter(txn => !claimedIds.has(txn.txnId));
+  }
+  // If transactions ARE provided, they are assumed to be pre-filtered already
+  // (i.e., claimed transactions already removed). Do NOT call getClaimedTransactionIds again.
+
+  if (!txns || txns.length === 0) {
     return {
       documentId,
       transactionId: null,
@@ -515,7 +575,7 @@ export async function matchDocumentToTransactions(
     };
   }
 
-  const results = request.transactions.map(txn => {
+  const results = txns.map(txn => {
     const { confidence, signals, fieldComparisons } = calculateMatchConfidence(docFields, txn);
     return { transaction: txn, confidence, signals, fieldComparisons };
   });
