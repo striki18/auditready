@@ -960,3 +960,177 @@ export async function getRegisterEntries(
     unmatchedDocumentId: row.unmatched_document_id,
   }));
 }
+
+/**
+ * Update the QBO evidence register for a single document after it's been processed.
+ * This reuses the existing matching logic and updates the register state accordingly.
+ * 
+ * @param documentId - The inbox document ID that was processed
+ * @param realmId - The realm ID
+ * @param collectionRequestId - The collection request ID
+ * @param matchResult - The match result from processInboxDocument
+ * @param docFields - The extracted document fields
+ * @returns The updated register entry for this document, or null if no change
+ */
+export async function updateRegisterForDocument(
+  documentId: string,
+  realmId: string,
+  collectionRequestId: string | undefined,
+  matchResult: MatchResult,
+  docFields: ExtractedDocumentFields
+): Promise<RegisterEntry | null> {
+  // Fetch existing register entries for this realm to check current state
+  const existingEntries = await getRegisterEntries(realmId, collectionRequestId);
+  
+  // Check if this document is already in the register
+  const existingEntry = existingEntries.find(e => 
+    e.matchedDocumentId === documentId || e.unmatchedDocumentId === documentId
+  );
+  
+  // Determine the new register state based on match result
+  let newState: QboRegisterState = 'UNMATCHED';
+  let qboTxnId: string = 'NO_MATCH';
+  let matchedTransaction: QBOTransaction | undefined;
+  
+  if (matchResult.status === 'matched') {
+    newState = 'MATCHED';
+    qboTxnId = matchResult.transactionId!;
+    matchedTransaction = matchResult.matchedTransaction;
+  } else if (matchResult.status === 'multiple_candidates') {
+    newState = 'FLAGGED';
+    qboTxnId = matchResult.allCandidates?.[0]?.txnId ?? 'UNKNOWN';
+    matchedTransaction = matchResult.allCandidates?.[0];
+  } else {
+    newState = 'UNMATCHED';
+    qboTxnId = 'NO_MATCH';
+    matchedTransaction = undefined;
+  }
+  
+  // Check for duplicate document content
+  const allDocs = await fetchInboxDocuments(realmId);
+  const docFieldsMap = new Map<string, ExtractedDocumentFields>();
+  docFieldsMap.set(documentId, docFields);
+  const duplicateIds = detectDuplicateDocumentIds(docFieldsMap);
+  const isDuplicate = duplicateIds.has(documentId);
+  
+  if (isDuplicate) {
+    newState = 'DUPLICATE';
+  }
+  
+  // If there's an existing entry for this document, check if we should update
+  if (existingEntry) {
+    // Preserve MATCHED state if already resolved
+    if (existingEntry.registerState === 'MATCHED' && newState !== 'MATCHED') {
+      // Don't downgrade a MATCHED document
+      return null;
+    }
+    
+    // Update the existing entry
+    const { error } = await supabaseAdmin
+      .from('qbo_evidence_register')
+      .update({
+        register_state: newState,
+        match_confidence: matchResult.confidence,
+        match_field_details: matchResult.candidateDetails || null,
+        matched_document_id: newState === 'MATCHED' || newState === 'FLAGGED' || newState === 'DUPLICATE' ? documentId : null,
+        unmatched_document_id: newState === 'UNMATCHED' ? documentId : null,
+        qbo_txn_id: qboTxnId,
+        qbo_txn_type: matchedTransaction?.txnType ?? null,
+        qbo_txn_date: matchedTransaction?.date ?? null,
+        qbo_txn_vendor: matchedTransaction?.vendor ?? null,
+        qbo_txn_amount: matchedTransaction?.amount ?? null,
+        qbo_txn_doc_number: matchedTransaction?.docNumber ?? null,
+        correct_qbo_txn_id: (newState as QboRegisterState) === 'WRONG_MATCHED' ? matchResult.transactionId ?? null : null,
+        flagged_candidate_txn_ids: newState === 'FLAGGED' 
+          ? (matchResult.allCandidates?.map(c => c.txnId) ?? [])
+          : [],
+        computed_at: new Date().toISOString(),
+      })
+      .eq('id', existingEntry.id);
+    
+    if (error) {
+      console.error(`Failed to update register entry for document ${documentId}:`, error.message);
+      return null;
+    }
+    
+    return { ...existingEntry, registerState: newState };
+  }
+  
+  // Check if the matched transaction already has a MATCHED entry with a different document
+  if (matchResult.status === 'matched' && matchResult.transactionId) {
+    const conflictingEntry = existingEntries.find(e => 
+      e.qboTxnId === matchResult.transactionId && 
+      e.registerState === 'MATCHED' && 
+      e.matchedDocumentId !== documentId
+    );
+    
+    if (conflictingEntry) {
+      // This transaction is already MATCHED with a different document
+      // Mark this document as WRONG_MATCHED
+      newState = 'WRONG_MATCHED';
+      qboTxnId = conflictingEntry.qboTxnId;
+    }
+  }
+  
+  // Create new register entry
+  const newEntry: RegisterEntry = {
+    realmId,
+    collectionRequestId: collectionRequestId ?? null,
+    qboTxnId,
+    qboTxnType: matchedTransaction?.txnType ?? null,
+    qboTxnDate: matchedTransaction?.date ?? null,
+    qboTxnVendor: matchedTransaction?.vendor ?? null,
+    qboTxnAmount: matchedTransaction?.amount ?? null,
+    qboTxnDocNumber: matchedTransaction?.docNumber ?? null,
+    attachableId: null, // Client documents don't have QBO attachable IDs
+    attachmentFilename: null, // Will be filled from document
+    attachmentFileSize: null,
+    attachmentDownloadUrl: null,
+    registerState: newState,
+    matchedDocumentId: newState === 'MATCHED' || newState === 'FLAGGED' || newState === 'DUPLICATE' || newState === 'WRONG_MATCHED' ? documentId : null,
+    matchConfidence: matchResult.confidence,
+    matchFieldDetails: matchResult.candidateDetails ?? null,
+    correctQboTxnId: newState === 'WRONG_MATCHED' ? matchResult.transactionId ?? null : null,
+    duplicateOfRegisterId: null,
+    flaggedCandidateTxnIds: newState === 'FLAGGED' 
+      ? (matchResult.allCandidates?.map(c => c.txnId) ?? [])
+      : [],
+    unmatchedDocumentId: newState === 'UNMATCHED' ? documentId : null,
+  };
+  
+  // Persist the new entry
+  const { error } = await supabaseAdmin
+    .from('qbo_evidence_register')
+    .upsert({
+      realm_id: realmId,
+      collection_request_id: newEntry.collectionRequestId,
+      qbo_txn_id: newEntry.qboTxnId,
+      qbo_txn_type: newEntry.qboTxnType,
+      qbo_txn_date: newEntry.qboTxnDate,
+      qbo_txn_vendor: newEntry.qboTxnVendor,
+      qbo_txn_amount: newEntry.qboTxnAmount,
+      qbo_txn_doc_number: newEntry.qboTxnDocNumber,
+      attachable_id: newEntry.attachableId,
+      attachment_filename: newEntry.attachmentFilename,
+      attachment_file_size: newEntry.attachmentFileSize,
+      attachment_download_url: newEntry.attachmentDownloadUrl,
+      register_state: newEntry.registerState,
+      matched_document_id: newEntry.matchedDocumentId,
+      match_confidence: newEntry.matchConfidence,
+      match_field_details: newEntry.matchFieldDetails,
+      correct_qbo_txn_id: newEntry.correctQboTxnId,
+      duplicate_of_register_id: newEntry.duplicateOfRegisterId,
+      flagged_candidate_txn_ids: newEntry.flaggedCandidateTxnIds,
+      unmatched_document_id: newEntry.unmatchedDocumentId,
+      computed_at: new Date().toISOString(),
+    }, {
+      onConflict: 'realm_id,qbo_txn_id,attachable_id',
+    });
+  
+  if (error) {
+    console.error(`Failed to insert register entry for document ${documentId}:`, error.message);
+    return null;
+  }
+  
+  return newEntry;
+}

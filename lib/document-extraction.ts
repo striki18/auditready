@@ -1,6 +1,6 @@
 /**
  * Document Extraction and Transaction Matching Pipeline
- * 
+ *
  * Extracts key fields from uploaded documents and matches them against
  * QuickBooks transactions from collection requests.
  */
@@ -74,6 +74,15 @@ export interface CollectionRequestWithTransactions {
   realmId: string;
   transactionIds: string[];
   transactions: QBOTransaction[];
+}
+
+/**
+ * Combined result from processing an inbox document.
+ * Includes both the match result and the extracted fields.
+ */
+export interface ProcessedDocumentResult {
+  matchResult: MatchResult;
+  extractedFields: ExtractedDocumentFields;
 }
 
 /**
@@ -152,17 +161,17 @@ async function extractTextFromDocument(buffer: Buffer, contentType: string): Pro
   if (contentType === 'application/pdf') {
     return extractPdfText(buffer);
   }
-  
+
   if (contentType.startsWith('image/')) {
     // For images, we'd need OCR - returning placeholder for now
     // In production, integrate with OCR service (Tesseract, AWS Textract, etc.)
     return '[IMAGE CONTENT - OCR NOT IMPLEMENTED]';
   }
-  
+
   if (contentType === 'text/plain') {
     return buffer.toString('utf-8');
   }
-  
+
   // Default: try to decode as text
   try {
     return buffer.toString('utf-8');
@@ -308,7 +317,7 @@ function normalizeDate(dateStr: string): string | null {
     const match = dateStr.match(format);
     if (match) {
       let year: number, month: number, day: number;
-      
+
       if (match[3].length === 4) {
         // MM/DD/YYYY or DD/MM/YYYY - assume US format MM/DD/YYYY
         month = parseInt(match[1], 10);
@@ -371,7 +380,7 @@ export async function getCollectionRequestWithTransactions(
   // For now, return the transaction IDs as-is
   // In a full implementation, you'd fetch actual QBO transaction data
   const transactionIds: string[] = request.transaction_ids || [];
-  
+
   // Mock QBO transactions - in production, fetch from QBO API
   const transactions: QBOTransaction[] = transactionIds.map((id, index) => ({
     txnId: id,
@@ -464,7 +473,7 @@ export function calculateMatchConfidence(
     const docDate = new Date(docFields.documentDate);
     const txnDate = new Date(transaction.date);
     const diffDays = Math.abs((docDate.getTime() - txnDate.getTime()) / (1000 * 60 * 60 * 24));
-    
+
     const match = diffDays <= 1;
     if (match) {
       signals.dateMatch = true;
@@ -536,7 +545,7 @@ export async function matchDocumentToTransactions(
   // Legacy behavior: fetch from collection request if transactions not provided
   if (!txns) {
     const request = await getCollectionRequestWithTransactions(collectionRequestId);
-    
+
     if (!request || request.transactions.length === 0) {
       return {
         documentId,
@@ -584,7 +593,7 @@ export async function matchDocumentToTransactions(
   results.sort((a, b) => b.confidence - a.confidence);
 
   const bestMatch = results[0];
-  
+
   // Check for multiple high-confidence candidates
   // Auto-match requires confidence >= 90 with exactly one candidate at that level.
   // Ambiguous requires top candidate >= 60 (but not qualifying as auto-match).
@@ -635,11 +644,13 @@ export async function matchDocumentToTransactions(
 
 /**
  * Main pipeline function: Process an inbox document and match to transactions
+ * Returns both the MatchResult and the extracted fields so the caller can
+ * update the evidence register via the existing engine (updateRegisterForDocument).
  */
 export async function processInboxDocument(
   documentId: string,
   collectionRequestId: string
-): Promise<MatchResult> {
+): Promise<ProcessedDocumentResult> {
   // 1. Get document metadata
   const { data: document, error: docError } = await supabaseAdmin
     .from('inbox_documents')
@@ -680,7 +691,10 @@ export async function processInboxDocument(
     })
     .eq('id', documentId);
 
-  return matchResult;
+  // 7. Return both match result and extracted fields.
+  // The caller is responsible for calling updateRegisterForDocument to update the evidence register.
+  // This ensures a single update path through the register engine.
+  return { matchResult, extractedFields: fields };
 }
 
 /**
@@ -688,7 +702,7 @@ export async function processInboxDocument(
  */
 export async function processCollectionRequestDocuments(
   collectionRequestId: string
-): Promise<MatchResult[]> {
+): Promise<ProcessedDocumentResult[]> {
   // Get all documents for this realm that haven't been processed
   const { data: request } = await supabaseAdmin
     .from('collection_requests')
@@ -710,8 +724,8 @@ export async function processCollectionRequestDocuments(
     throw new Error(`Failed to fetch documents: ${error.message}`);
   }
 
-  const results: MatchResult[] = [];
-  
+  const results: ProcessedDocumentResult[] = [];
+
   for (const doc of documents || []) {
     try {
       const result = await processInboxDocument(doc.id, collectionRequestId);
@@ -719,11 +733,21 @@ export async function processCollectionRequestDocuments(
     } catch (e) {
       console.error(`Failed to process document ${doc.id}:`, e instanceof Error ? e.message : String(e));
       results.push({
-        documentId: doc.id,
-        transactionId: null,
-        confidence: 0,
-        matchSignals: { vendorMatch: false, amountMatch: false, dateMatch: false, documentNumberMatch: false },
-        status: 'no_match',
+        matchResult: {
+          documentId: doc.id,
+          transactionId: null,
+          confidence: 0,
+          matchSignals: { vendorMatch: false, amountMatch: false, dateMatch: false, documentNumberMatch: false },
+          status: 'no_match',
+        },
+        extractedFields: {
+          vendorName: null,
+          documentDate: null,
+          totalAmount: null,
+          documentNumber: null,
+          documentType: null,
+          rawText: '',
+        },
       });
     }
   }

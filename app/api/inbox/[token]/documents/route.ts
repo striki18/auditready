@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
-import { processInboxDocument } from '../../../../../lib/document-extraction';
+import { processInboxDocument, type ProcessedDocumentResult } from '../../../../../lib/document-extraction';
+import { updateRegisterForDocument } from '../../../../../lib/qbo-evidence-register';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -99,7 +100,8 @@ export async function POST(
       try {
         const collectionRequestId = await findLatestCollectionRequest(realmId);
         if (collectionRequestId) {
-          await processInboxDocument(document.id, collectionRequestId);
+          const result: ProcessedDocumentResult = await processInboxDocument(document.id, collectionRequestId);
+          await updateRegisterForDocument(document.id, realmId, collectionRequestId, result.matchResult, result.extractedFields);
         }
       } catch (err) {
         console.error('Document processing error:', err);
