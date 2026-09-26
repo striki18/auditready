@@ -4,6 +4,7 @@
  */
 import { supabase } from './supabase';
 import { withApiRetry, withDownloadRetry } from './retry';
+import { withRetry, DOWNLOAD_RETRY_CONFIG, sleep } from './retry';
 
 let memoryCache: any = null;
 
@@ -68,18 +69,46 @@ async function refreshAccessToken(refreshToken: string) {
     grant_type: 'refresh_token',
     refresh_token: refreshToken,
   });
-  const res = await fetch(tokenUrl, {
-    method: 'POST',
-    headers: {
-      Authorization: `Basic ${basicAuth}`,
-      'Content-Type': 'application/x-www-form-urlencoded',
+
+  // Use retry logic for network failures (similar to download retry config)
+  // with 3 retries and 5 second wait between attempts
+  return await withRetry(async () => {
+    // Add timeout to prevent indefinite hanging
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+
+    try {
+      const res = await fetch(tokenUrl, {
+        method: 'POST',
+        headers: {
+          Authorization: `Basic ${basicAuth}`,
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: body.toString(),
+        signal: controller.signal,
+      });
+
+      if (!res.ok) {
+        const errBody = await res.text();
+        const error = new Error(`Failed to refresh QuickBooks token: ${res.status} ${errBody}`);
+        (error as any).status = res.status;
+        throw error;
+      }
+
+      const data = await res.json();
+      await storeToken(data);
+      return data.access_token;
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  }, {
+    ...DOWNLOAD_RETRY_CONFIG,
+    maxRetries: 3,
+    waitMs: 5000,
+    onRetry: (attempt, error) => {
+      console.log(`[QuickBooks Token Refresh] Retry attempt ${attempt}/3: ${error.message}`);
     },
-    body: body.toString(),
   });
-  if (!res.ok) throw new Error('Failed to refresh QuickBooks token');
-  const data = await res.json();
-  await storeToken(data);
-  return data.access_token;
 }
 
 /** Get a valid access token, refreshing if needed. */

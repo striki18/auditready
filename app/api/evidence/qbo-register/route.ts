@@ -1,16 +1,14 @@
 import { NextResponse } from 'next/server';
-import { buildQboEvidenceRegister, persistRegisterEntries } from '@/lib/qbo-evidence-register';
+import { getRegisterEntries, persistRegisterEntries } from '@/lib/qbo-evidence-register';
 
 /**
  * GET /api/evidence/qbo-register?realmId=...&collectionRequestId=...&startDate=...&endDate=...
  * 
- * Returns the QBO evidence register with 6 states:
+ * Returns the QBO evidence register with 4 final states:
  * - MATCHED: Correct attachment for this transaction
  * - WRONG_MATCHED: Attachment confidently matches a different QBO transaction
  * - MISSING: No supporting document exists for a transaction
- * - DUPLICATE: Same document/evidence appears more than once
- * - FLAGGED: Possible transaction match exists but cannot be deterministically resolved
- * - UNMATCHED: A document exists but cannot be matched to any transaction
+ * - REVIEW_REQUIRED: Requires manual review
  */
 export async function GET(request: Request) {
   try {
@@ -24,12 +22,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'realmId is required' }, { status: 400 });
     }
 
-    const register = await buildQboEvidenceRegister({
-      realmId,
-      collectionRequestId,
-      startDate,
-      endDate,
-    });
+    const register = await getRegisterEntries(realmId, collectionRequestId);
 
     return NextResponse.json(register);
   } catch (e: any) {
@@ -56,12 +49,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'realmId is required' }, { status: 400 });
     }
 
-    const register = await buildQboEvidenceRegister({
-      realmId,
-      collectionRequestId,
-      startDate,
-      endDate,
-    });
+    const register = await getRegisterEntries(realmId, collectionRequestId);
 
     // Persist to database
     await persistRegisterEntries(register, realmId);
@@ -82,9 +70,7 @@ function summarizeRegister(entries: any[]) {
     MATCHED: 0,
     WRONG_MATCHED: 0,
     MISSING: 0,
-    DUPLICATE: 0,
-    FLAGGED: 0,
-    UNMATCHED: 0,
+    REVIEW_REQUIRED: 0,
   };
   
   for (const entry of entries) {

@@ -83,6 +83,8 @@ export interface CollectionRequestWithTransactions {
 export interface ProcessedDocumentResult {
   matchResult: MatchResult;
   extractedFields: ExtractedDocumentFields;
+  isDuplicate: boolean;
+  duplicateOfDocumentId: string | null;
 }
 
 /**
@@ -643,6 +645,52 @@ export async function matchDocumentToTransactions(
 }
 
 /**
+ * Check if a document is a duplicate of an already processed document in the same realm.
+ * Compares extracted fields (vendor, amount, date, document number) to detect duplicates.
+ * Returns the ID of the original document if duplicate found, null otherwise.
+ */
+async function checkForDuplicateDocument(
+  realmId: string,
+  fields: ExtractedDocumentFields,
+  currentDocumentId: string
+): Promise<string | null> {
+  // Skip duplicate check if no extractable fields
+  if (!fields.vendorName && fields.totalAmount === null && !fields.documentDate && !fields.documentNumber) {
+    return null;
+  }
+
+  // Query all processed documents in the same realm
+  const { data: existingDocs, error } = await supabaseAdmin
+    .from('inbox_documents')
+    .select('id, extracted_vendor, extracted_amount, extracted_date, extracted_document_number')
+    .eq('realm_id', realmId)
+    .not('id', 'eq', currentDocumentId)
+    .not('processed_at', 'is', null);
+
+  if (error || !existingDocs) {
+    return null;
+  }
+
+  // Create fingerprint for the new document
+  const newFingerprint = `${fields.vendorName || ''}_${fields.totalAmount || ''}_${fields.documentDate || ''}_${fields.documentNumber || ''}`;
+
+  // Check each existing document for matching fingerprint
+  for (const doc of existingDocs) {
+    if (!doc.extracted_vendor && doc.extracted_amount === null && !doc.extracted_date && !doc.extracted_document_number) {
+      continue; // Skip documents with no extracted fields
+    }
+
+    const existingFingerprint = `${doc.extracted_vendor || ''}_${doc.extracted_amount || ''}_${doc.extracted_date || ''}_${doc.extracted_document_number || ''}`;
+
+    if (existingFingerprint === newFingerprint) {
+      return doc.id;
+    }
+  }
+
+  return null;
+}
+
+/**
  * Main pipeline function: Process an inbox document and match to transactions
  * Returns both the MatchResult and the extracted fields so the caller can
  * update the evidence register via the existing engine (updateRegisterForDocument).
@@ -671,10 +719,54 @@ export async function processInboxDocument(
   // 4. Extract fields
   const fields = extractFieldsFromText(text);
 
-  // 5. Match against collection request transactions
+  // 5. Check for duplicate document in the same realm
+  const duplicateOfDocumentId = await checkForDuplicateDocument(document.realm_id, fields, documentId);
+
+  // 6. If duplicate, return early with duplicate flag
+  if (duplicateOfDocumentId) {
+    // Create a no_match result for duplicate documents
+    const matchResult: MatchResult = {
+      documentId,
+      transactionId: null,
+      confidence: 0,
+      matchSignals: {
+        vendorMatch: false,
+        amountMatch: false,
+        dateMatch: false,
+        documentNumberMatch: false,
+      },
+      status: 'no_match',
+    };
+
+    // Still store the extracted fields for reference
+    await supabaseAdmin
+      .from('inbox_documents')
+      .update({
+        extracted_vendor: fields.vendorName,
+        extracted_date: fields.documentDate,
+        extracted_amount: fields.totalAmount,
+        extracted_document_number: fields.documentNumber,
+        extracted_type: fields.documentType,
+        match_status: 'duplicate',
+        match_confidence: 0,
+        matched_transaction_id: null,
+        match_field_details: null,
+        processed_at: new Date().toISOString(),
+      })
+      .eq('id', documentId);
+
+    return {
+      matchResult,
+      extractedFields: fields,
+      isDuplicate: true,
+      duplicateOfDocumentId,
+    };
+  }
+
+  // 7. Match against collection request transactions
   const matchResult = await matchDocumentToTransactions(documentId, fields, collectionRequestId);
 
-  // 6. Store match result in database (extend inbox_documents or create new table)
+  // 8. Store match result in database (extend inbox_documents or create new table)
   await supabaseAdmin
     .from('inbox_documents')
     .update({
@@ -691,10 +783,15 @@ export async function processInboxDocument(
     })
     .eq('id', documentId);
 
-  // 7. Return both match result and extracted fields.
+  // 9. Return both match result and extracted fields.
   // The caller is responsible for calling updateRegisterForDocument to update the evidence register.
   // This ensures a single update path through the register engine.
-  return { matchResult, extractedFields: fields };
+  return {
+    matchResult,
+    extractedFields: fields,
+    isDuplicate: false,
+    duplicateOfDocumentId: null,
+  };
 }
 
 /**
@@ -748,6 +845,8 @@ export async function processCollectionRequestDocuments(
           documentType: null,
           rawText: '',
         },
+        isDuplicate: false,
+        duplicateOfDocumentId: null,
       });
     }
   }

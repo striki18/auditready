@@ -150,23 +150,51 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
     }
 
-    const { realm_id, transaction_ids } = body;
+    const { realm_id, transaction_ids: providedTransactionIds } = body;
 
     // Validate realm_id
     if (!realm_id || typeof realm_id !== 'string' || realm_id.trim() === '') {
       return NextResponse.json({ error: 'realm_id is required and must be non-empty' }, { status: 400 });
     }
 
-    // Validate transaction_ids
-    if (!transaction_ids || !Array.isArray(transaction_ids) || transaction_ids.length === 0) {
-      return NextResponse.json({ error: 'transaction_ids is required and must be a non-empty array' }, { status: 400 });
-    }
+    // Determine transaction_ids: if provided, validate them; otherwise fetch from qbo_evidence_register
+    let transactionIds: string[];
 
-    // Validate each transaction_id is a non-empty string
-    for (const txnId of transaction_ids) {
-      if (!txnId || typeof txnId !== 'string' || txnId.trim() === '') {
-        return NextResponse.json({ error: 'All transaction_ids must be non-empty strings' }, { status: 400 });
+    if (providedTransactionIds && Array.isArray(providedTransactionIds) && providedTransactionIds.length > 0) {
+      // Validate provided transaction_ids
+      for (const txnId of providedTransactionIds) {
+        if (!txnId || typeof txnId !== 'string' || txnId.trim() === '') {
+          return NextResponse.json({ error: 'All transaction_ids must be non-empty strings' }, { status: 400 });
+        }
       }
+      transactionIds = providedTransactionIds;
+    } else {
+      // Fetch transaction IDs from qbo_evidence_register where register_state != 'MATCHED'
+      const { data: registerEntries, error: registerError } = await supabaseQuery('qbo_evidence_register', {
+        filter: { realm_id },
+        select: 'qbo_txn_id,register_state',
+      });
+
+      if (registerError) {
+        console.error('Error fetching qbo_evidence_register:', registerError);
+        return NextResponse.json({ error: 'Failed to fetch evidence register' }, { status: 500 });
+      }
+
+      // Filter out MATCHED transactions and get unique qbo_txn_id values
+      const entries = (registerEntries || []) as Array<{ qbo_txn_id: string | null; register_state: string }>;
+      const nonMatchedEntries = entries.filter(
+        (entry) => entry.register_state !== 'MATCHED'
+      );
+
+      const uniqueTxnIds = Array.from(
+        new Set(nonMatchedEntries.map((entry) => entry.qbo_txn_id).filter(Boolean)) as Set<string>
+      );
+
+      if (uniqueTxnIds.length === 0) {
+        return NextResponse.json({ error: 'No non-MATCHED transactions found in evidence register for this realm' }, { status: 400 });
+      }
+
+      transactionIds = uniqueTxnIds;
     }
 
     // Find or create company inbox
@@ -207,7 +235,7 @@ export async function POST(request: NextRequest) {
       method: 'POST',
       body: {
         realm_id,
-        transaction_ids,
+        transaction_ids: transactionIds,
         status: 'requested',
       },
       single: true,

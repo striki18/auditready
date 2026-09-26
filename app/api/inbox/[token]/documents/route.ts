@@ -101,7 +101,15 @@ export async function POST(
         const collectionRequestId = await findLatestCollectionRequest(realmId);
         if (collectionRequestId) {
           const result: ProcessedDocumentResult = await processInboxDocument(document.id, collectionRequestId);
-          await updateRegisterForDocument(document.id, realmId, collectionRequestId, result.matchResult, result.extractedFields);
+          await updateRegisterForDocument(
+            document.id,
+            realmId,
+            collectionRequestId,
+            result.matchResult,
+            result.extractedFields,
+            result.isDuplicate,
+            result.duplicateOfDocumentId
+          );
         }
       } catch (err) {
         console.error('Document processing error:', err);

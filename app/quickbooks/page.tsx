@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
-import { buildEvidenceRegister } from '@/lib/evidence';
 import styles from './page.module.css';
 
 interface CompanyInfo {
@@ -51,7 +50,7 @@ interface PipelineStats {
 interface PipelineError {
   stage: string;
   reason: string;
-  details?: any;
+  details?: Record<string, unknown>;
 }
 
 interface GenerateResponse {
@@ -73,6 +72,16 @@ interface PipelineProgress {
 interface TokenInfo {
   realm_id: string;
   expires_at: string;
+}
+
+interface RegisterEntry {
+  txnId?: string;
+  hasAttachment?: boolean;
+  txnType?: string;
+  docNumber?: string;
+  date?: string;
+  vendor?: string;
+  amount?: string | number;
 }
 
 type NavSection = 'overview' | 'generate' | 'evidence' | 'missing' | 'attachments';
@@ -292,9 +301,10 @@ export default function QuickbooksPage() {
       setCompany(data);
       setConnectionStatus('connected');
       setConnectionError(null);
-    } catch (e: any) {
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : 'Unknown error';
       setConnectionStatus('not_connected');
-      setConnectionError(e.message);
+      setConnectionError(message);
       setCompany(null);
     }
   }, []);
@@ -389,8 +399,9 @@ export default function QuickbooksPage() {
       }
 
       setGenerationResult(result);
-    } catch (e: any) {
-      setGenerationError(e.message);
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : 'Unknown error';
+      setGenerationError(message);
     } finally {
       setGenerating(false);
     }
@@ -552,8 +563,62 @@ export default function QuickbooksPage() {
     return `${minutes}m ${remainingSeconds}s`;
   };
 
+  // Token health state
+  const [tokenHealth, setTokenHealth] = useState<'healthy' | 'expiring' | 'expired' | 'refresh_failed' | 'unknown'>('unknown');
+  const [tokenRefreshError, setTokenRefreshError] = useState<string | null>(null);
+
+  // Check token health and update state
+  const checkTokenHealth = useCallback(() => {
+    if (!tokenInfo) {
+      setTokenHealth('unknown');
+      return;
+    }
+    const expiresAt = new Date(tokenInfo.expires_at).getTime();
+    const now = Date.now();
+    const minutesUntilExpiry = (expiresAt - now) / (1000 * 60);
+
+    if (minutesUntilExpiry <= 0) {
+      setTokenHealth('expired');
+    } else if (minutesUntilExpiry < 10) {
+      setTokenHealth('expiring');
+    } else if (minutesUntilExpiry <= 60) {
+      setTokenHealth('healthy');
+    } else {
+      setTokenHealth('healthy');
+    }
+  }, [tokenInfo]);
+
+  // Check token health when tokenInfo changes
+  useEffect(() => {
+    checkTokenHealth();
+  }, [tokenInfo, checkTokenHealth]);
+
+  // Handle Reconnect QuickBooks - triggers full OAuth flow
+  const handleReconnect = () => {
+    setTokenRefreshError(null);
+    window.location.href = '/api/auth/intuit';
+  };
+
+  // Handle Refresh Token - attempts to refresh the token via API
+  const handleRefreshToken = async () => {
+    setTokenRefreshError(null);
+    try {
+      // Call the company info endpoint which will trigger token refresh via getAccessToken()
+      const res = await fetch('/api/quickbooks/companyInfo');
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Failed to refresh token');
+      }
+      await fetchConnectionStatus();
+      await fetchTokenInfo();
+    } catch (e: any) {
+      setTokenHealth('refresh_failed');
+      setTokenRefreshError(e.message);
+    }
+  };
+
   // Get connection health text
-  const getConnectionHealth = () => {
+  const getConnectionHealth = useCallback(() => {
     if (!tokenInfo) return 'Unknown';
     const expiresAt = new Date(tokenInfo.expires_at).getTime();
     const now = Date.now();
@@ -561,17 +626,17 @@ export default function QuickbooksPage() {
     if (minutesUntilExpiry <= 0) return 'Expired';
     if (minutesUntilExpiry < 10) return 'Expiring Soon';
     return 'Healthy';
-  };
+  }, [tokenInfo]);
 
   // Get token refresh status
-  const getTokenRefreshStatus = () => {
+  const getTokenRefreshStatus = useCallback(() => {
     if (!tokenInfo) return 'No Token';
     const expiresAt = new Date(tokenInfo.expires_at).getTime();
     const now = Date.now();
     const minutesUntilExpiry = (expiresAt - now) / (1000 * 60);
     if (minutesUntilExpiry <= 60) return 'Auto-refresh Active';
     return 'Valid';
-  };
+  }, [tokenInfo]);
 
   // Render connection badge for header
   const renderHeaderConnectionBadge = () => {
@@ -676,6 +741,38 @@ export default function QuickbooksPage() {
             )}
           </div>
         </div>
+
+        {/* Token Health Indicator */}
+        <div className={styles.connectionField}>
+          <label>Token Health</label>
+          <div className={styles.tokenHealthDisplay}>
+            <span className={`${styles.tokenHealthBadge} ${styles['tokenHealth' + tokenHealth.charAt(0).toUpperCase() + tokenHealth.slice(1)]}`}>
+              {tokenHealth === 'healthy' && '● Healthy'}
+              {tokenHealth === 'expiring' && '● Expiring Soon'}
+              {tokenHealth === 'expired' && '● Expired'}
+              {tokenHealth === 'refresh_failed' && '● Refresh Failed'}
+              {tokenHealth === 'unknown' && '● Unknown'}
+            </span>
+            {tokenInfo && (
+              <span className={styles.tokenExpiry}>
+                Expires: {new Date(tokenInfo.expires_at).toLocaleString()}
+              </span>
+            )}
+            {tokenRefreshError && (
+              <span className={styles.tokenError}>
+                <AlertIcon /> {tokenRefreshError}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Token Refresh Status */}
+        <div className={styles.connectionField}>
+          <label>Token Refresh</label>
+          <div>
+            <span>{getTokenRefreshStatus()}</span>
+          </div>
+        </div>
       </div>
 
       <div className={styles.cardActions}>
@@ -688,9 +785,26 @@ export default function QuickbooksPage() {
             Connect QuickBooks
           </button>
         ) : (
-          <button className={styles.btn + ' ' + styles.btnSecondary} onClick={handleRefreshConnection}>
-            Refresh Connection
-          </button>
+          <>
+            <button className={styles.btn + ' ' + styles.btnSecondary} onClick={handleRefreshConnection}>
+              Refresh Connection
+            </button>
+            <button
+              className={styles.btn + ' ' + styles.btnSecondary}
+              onClick={handleRefreshToken}
+              disabled={tokenHealth === 'healthy' && !tokenRefreshError}
+            >
+              Refresh Token
+            </button>
+            {tokenHealth === 'expired' || tokenHealth === 'refresh_failed' ? (
+              <button
+                className={styles.btn + ' ' + styles.btnPrimary + ' ' + styles.btnLg}
+                onClick={handleReconnect}
+              >
+                Reconnect QuickBooks
+              </button>
+            ) : null}
+          </>
         )}
       </div>
     </div>
@@ -955,7 +1069,7 @@ export default function QuickbooksPage() {
     </div>
   );
 
-  const [missingTransactions, setMissingTransactions] = useState<any[]>([]);
+  const [missingTransactions, setMissingTransactions] = useState<RegisterEntry[]>([]);
   const [fetchingMissing, setFetchingMissing] = useState(false);
 
   const fetchMissingTransactions = useCallback(async () => {
