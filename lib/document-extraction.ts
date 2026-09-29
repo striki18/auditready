@@ -365,6 +365,7 @@ export async function downloadDocument(storagePath: string): Promise<Buffer> {
 
 /**
  * Get collection request with associated transactions
+ * Fetches real transaction data from qbo_evidence_register by qbo_txn_id and realm_id
  */
 export async function getCollectionRequestWithTransactions(
   collectionRequestId: string
@@ -379,24 +380,58 @@ export async function getCollectionRequestWithTransactions(
     return null;
   }
 
-  // For now, return the transaction IDs as-is
-  // In a full implementation, you'd fetch actual QBO transaction data
   const transactionIds: string[] = request.transaction_ids || [];
+  const realmId = request.realm_id;
 
-  // Mock QBO transactions - in production, fetch from QBO API
-  const transactions: QBOTransaction[] = transactionIds.map((id, index) => ({
-    txnId: id,
-    txnType: 'Invoice',
-    date: '2024-01-15',
-    vendor: `Vendor ${index + 1}`,
-    amount: 100.00 + index * 50,
-    docNumber: `INV-${1000 + index}`,
-  }));
+  if (transactionIds.length === 0) {
+    return {
+      id: request.id,
+      realmId,
+      transactionIds,
+      transactions: [],
+    };
+  }
+
+  // Fetch real transaction data from qbo_evidence_register
+  const { data: registerRows, error: regError } = await supabaseAdmin
+    .from('qbo_evidence_register')
+    .select('qbo_txn_id, qbo_txn_type, qbo_txn_date, qbo_txn_vendor, qbo_txn_amount, qbo_txn_doc_number')
+    .eq('realm_id', realmId)
+    .in('qbo_txn_id', transactionIds);
+
+  if (regError) {
+    console.error('Failed to fetch register rows:', regError.message);
+    return null;
+  }
+
+  // Build a map for quick lookup
+  const registerMap = new Map<string, any>();
+  for (const row of registerRows || []) {
+    registerMap.set(row.qbo_txn_id, row);
+  }
+
+  // Build transactions array from register data
+  const transactions: QBOTransaction[] = [];
+  for (const id of transactionIds) {
+    const row = registerMap.get(id);
+    if (!row) {
+      console.warn(`No register row found for transaction ID: ${id} in realm ${realmId}. Excluding from candidates.`);
+      continue;
+    }
+    transactions.push({
+      txnId: row.qbo_txn_id,
+      txnType: row.qbo_txn_type,
+      date: row.qbo_txn_date,
+      vendor: row.qbo_txn_vendor,
+      amount: row.qbo_txn_amount,
+      docNumber: row.qbo_txn_doc_number,
+    });
+  }
 
   return {
     id: request.id,
-    realmId: request.realm_id,
-    transactionIds,
+    realmId,
+    transactionIds: transactions.map(t => t.txnId), // Only IDs with register rows
     transactions,
   };
 }
