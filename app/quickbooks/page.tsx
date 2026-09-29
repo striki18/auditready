@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
+import { buildQboTransactionUrl } from '@/lib/qbo-links';
 import styles from './page.module.css';
 
 interface CompanyInfo {
@@ -1146,23 +1147,38 @@ export default function QuickbooksPage() {
                     </label>
                   </div>
                   <div className={styles.tableRows}>
-                    {missingTransactions.map((txn: any) => (
-                      <label key={txn.txnId} className={styles.txnRow}>
-                        <input
-                          type="checkbox"
-                          checked={selectedTxnIds.includes(txn.txnId)}
-                          onChange={(e) => handleTxnSelect(txn.txnId, e.target.checked)}
-                          disabled={creatingRequest}
-                        />
-                        <div className={styles.txnInfo}>
-                          <span className={styles.txnType}>{txn.txnType}</span>
-                          <span className={styles.txnDocNumber}>{txn.docNumber}</span>
-                          <span className={styles.txnDate}>{txn.date}</span>
-                          <span className={styles.txnVendor}>{txn.vendor}</span>
-                          <span className={styles.txnAmount}>{txn.amount}</span>
-                        </div>
-                      </label>
-                    ))}
+{missingTransactions.map((txn: any) => {
+                      const qboUrl = buildQboTransactionUrl(txn.txnType ?? null, txn.txnId ?? null);
+                      return (
+                        <label key={txn.txnId} className={styles.txnRow} style={{ cursor: qboUrl ? 'pointer' : 'default' }} onClick={(e) => {
+                          // Don't navigate if clicking on checkbox
+                          if (e.target instanceof HTMLInputElement && e.target.type === 'checkbox') return;
+                          if (qboUrl) {
+                            window.open(qboUrl, '_blank', 'noopener,noreferrer');
+                          }
+                        }}>
+                          <input
+                            type="checkbox"
+                            checked={selectedTxnIds.includes(txn.txnId)}
+                            onChange={(e) => handleTxnSelect(txn.txnId, e.target.checked)}
+                            disabled={creatingRequest}
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                          <div className={styles.txnInfo}>
+                            <span className={styles.txnType}>{txn.txnType}</span>
+                            <span className={styles.txnDocNumber}>{txn.docNumber}</span>
+                            <span className={styles.txnDate}>{txn.date}</span>
+                            <span className={styles.txnVendor}>{txn.vendor}</span>
+                            <span className={styles.txnAmount}>{txn.amount}</span>
+                          </div>
+                          {qboUrl && (
+                            <span className={styles.qboLinkHint} title="Opens in QuickBooks Online">
+                              <LinkIcon style={{ width: 14, height: 14, verticalAlign: 'middle' }} />
+                            </span>
+                          )}
+                        </label>
+                      );
+                    })}
                   </div>
                 </div>
               )}
