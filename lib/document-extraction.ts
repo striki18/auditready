@@ -393,11 +393,13 @@ export async function getCollectionRequestWithTransactions(
   }
 
   // Fetch real transaction data from qbo_evidence_register
+  // Exclude MATCHED transactions - they are already resolved and should not be candidates
   const { data: registerRows, error: regError } = await supabaseAdmin
     .from('qbo_evidence_register')
-    .select('qbo_txn_id, qbo_txn_type, qbo_txn_date, qbo_txn_vendor, qbo_txn_amount, qbo_txn_doc_number')
+    .select('qbo_txn_id, qbo_txn_type, qbo_txn_date, qbo_txn_vendor, qbo_txn_amount, qbo_txn_doc_number, register_state')
     .eq('realm_id', realmId)
-    .in('qbo_txn_id', transactionIds);
+    .in('qbo_txn_id', transactionIds)
+    .neq('register_state', 'MATCHED');
 
   if (regError) {
     console.error('Failed to fetch register rows:', regError.message);

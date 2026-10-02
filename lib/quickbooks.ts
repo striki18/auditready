@@ -802,6 +802,21 @@ export function normalizeTransactionList(report: any) {
 }
 
 /**
+ * Build a QBO deep-link URL for a transaction.
+ *
+ * QBO deep-link format: https://app.qbo.intuit.com/app/transaction/{transactionType}?txnId={transactionId}
+ *
+ * @param txnType - The transaction type as stored/mapped by AuditReady (e.g., "Invoice", "Bill", "BillPayment", "Check", etc.)
+ * @param txnId - The QuickBooks transaction ID
+ * @returns The full deep-link URL or null if either parameter is missing
+ */
+export function buildQboTransactionUrl(txnType: string | null, txnId: string | null): string | null {
+  if (!txnType || !txnId) return null;
+  // Use the transaction type exactly as stored/mapped by AuditReady
+  return `https://app.qbo.intuit.com/app/transaction/${encodeURIComponent(txnType)}?txnId=${encodeURIComponent(txnId)}`;
+}
+
+/**
  * Phase 3C – Normalize Attachable records.
  *
  * The QuickBooks `Attachable` object contains many fields, but the build book
